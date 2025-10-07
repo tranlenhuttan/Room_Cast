@@ -1,0 +1,36 @@
+﻿@model IEnumerable<RoomCast.Models.Album>
+@{
+    ViewData["Title"] = "My Albums";
+}
+
+<h2>My Albums</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Create New Album</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Created</th>
+            <th>Files</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var album in Model)
+        {
+            <tr>
+                <td>@album.AlbumName</td>
+                <td>@album.Timestamp</td>
+                <td>@album.AlbumFiles.Count</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@album.AlbumId">View</a> |
+                    <a asp-action="AddFile" asp-route-id="@album.AlbumId">Add File</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+

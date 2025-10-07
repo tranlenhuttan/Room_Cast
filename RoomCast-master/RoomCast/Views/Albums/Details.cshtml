@@ -1,0 +1,79 @@
+﻿@model RoomCast.Models.Album
+@{
+    ViewData["Title"] = "Album Playback";
+}
+
+<h2>@Model.AlbumName</h2>
+<p>Created: @Model.Timestamp</p>
+
+<div id="slideshow-container">
+    @for (int i = 0; i < Model.AlbumFiles.Count; i++)
+    {
+        var item = Model.AlbumFiles.ElementAt(i).MediaFile;
+
+        <div class="slide" style="display:@(i == 0 ? "block" : "none")">
+            @if (item.FileType == "Image")
+            {
+                <img src="@item.FilePath" style="max-width:100%; height:auto;" />
+            }
+            else if (item.FileType == "Video")
+            {
+                <video controls style="max-width:100%;">
+                    <source src="@item.FilePath" type="video/mp4" />
+                </video>
+            }
+            else
+            {
+                <p><a href="@item.FilePath" target="_blank">@item.FileName</a></p>
+            }
+        </div>
+    }
+</div>
+
+<div class="controls mt-3">
+    <button onclick="prevSlide()" class="btn btn-secondary">Previous</button>
+    <button onclick="nextSlide()" class="btn btn-secondary">Next</button>
+    <button onclick="toggleSlideshow()" class="btn btn-primary" id="playPauseBtn">Start Slideshow</button>
+</div>
+
+<script>
+    let slideIndex = 0;
+    let slides = document.getElementsByClassName("slide");
+    let playing = false;
+    let timer;
+
+    function showSlide(index) {
+        if (index >= slides.length) slideIndex = 0;
+        if (index < 0) slideIndex = slides.length - 1;
+
+        for (let i = 0; i < slides.length; i++) {
+            slides[i].style.display = "none";
+        }
+        slides[slideIndex].style.display = "block";
+    }
+
+    function nextSlide() {
+        slideIndex++;
+        showSlide(slideIndex);
+    }
+
+    function prevSlide() {
+        slideIndex--;
+        showSlide(slideIndex);
+    }
+
+    function toggleSlideshow() {
+        if (!playing) {
+            playing = true;
+            document.getElementById("playPauseBtn").innerText = "Pause Slideshow";
+            timer = setInterval(nextSlide, 5000); // 5 seconds per slide
+        } else {
+            playing = false;
+            document.getElementById("playPauseBtn").innerText = "Start Slideshow";
+            clearInterval(timer);
+        }
+    }
+
+    // Initialize first slide
+    showSlide(slideIndex);
+</script>

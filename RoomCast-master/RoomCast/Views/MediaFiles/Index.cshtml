@@ -1,0 +1,56 @@
+﻿@model IEnumerable<RoomCast.Models.MediaFile>
+@{
+    ViewData["Title"] = "My Files";
+}
+
+<h2>My Files</h2>
+
+<form method="get">
+    <input type="text" name="searchTags" placeholder="Search by tags" />
+    <button type="submit">Search</button>
+</form>
+
+@if (TempData["Message"] != null)
+{
+    <div class="alert alert-success">@TempData["Message"]</div>
+}
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>File Name</th>
+            <th>Type</th>
+            <th>Tags</th>
+            <th>Date</th>
+            <th>Preview</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var file in Model)
+        {
+            <tr>
+                <td>@file.FileName</td>
+                <td>@file.FileType</td>
+                <td>@file.Tags</td>
+                <td>@file.Timestamp</td>
+                <td>
+                    @if (file.FileType == "Image")
+                    {
+                        <img src="@file.FilePath" width="100" />
+                    }
+                    else if (file.FileType == "Video")
+                    {
+                        <video width="200" controls>
+                            <source src="@file.FilePath" type="video/mp4" />
+                        </video>
+                    }
+                    else
+                    {
+                        <a href="@file.FilePath" target="_blank">Open</a>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+

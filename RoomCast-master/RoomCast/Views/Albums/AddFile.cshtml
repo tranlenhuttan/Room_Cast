@@ -1,0 +1,22 @@
+﻿@{
+    ViewData["Title"] = "Add File to Album";
+}
+
+<h2>Add File to Album</h2>
+
+<form asp-action="AddFile" method="post">
+    <input type="hidden" name="albumId" value="@ViewBag.AlbumId" />
+
+    <div class="form-group">
+        <label for="fileId">Select File</label>
+        <select name="fileId" class="form-control">
+            @foreach (var file in ViewBag.Files)
+            {
+                <option value="@file.FileId">@file.FileName (@file.FileType)</option>
+            }
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add</button>
+</form>
+

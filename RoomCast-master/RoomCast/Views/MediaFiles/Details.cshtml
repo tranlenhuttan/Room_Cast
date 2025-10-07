@@ -1,0 +1,24 @@
+﻿@model RoomCast.Models.MediaFile
+@{
+    ViewData["Title"] = "File Details";
+}
+
+<h2>@Model.FileName</h2>
+<p><strong>Type:</strong> @Model.FileType</p>
+<p><strong>Tags:</strong> @Model.Tags</p>
+<p><strong>Uploaded:</strong> @Model.Timestamp</p>
+
+@if (Model.FileType == "Image")
+{
+    <img src="@Model.FilePath" style="max-width:100%;" />
+}
+else if (Model.FileType == "Video")
+{
+    <video controls style="max-width:100%;">
+        <source src="@Model.FilePath" type="video/mp4" />
+    </video>
+}
+else
+{
+    <a href="@Model.FilePath" target="_blank">Download/Open</a>
+}
