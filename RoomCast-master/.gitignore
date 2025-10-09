@@ -365,5 +365,13 @@ FodyWeavers.xsd
 # RoomCast runtime uploads
 RoomCast/wwwroot/uploads/
 
-# Ignore environment configuration files
+# Local development state
+RoomCast/app.db
+RoomCast/app.db-*
+AGENTS.md
 mise.toml
+
+# Ignore environment configuration files
+../mise.toml
+../AGENTS.md
+../PROJECT.md
