@@ -17,19 +17,26 @@
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">RoomCast</a>
+@{
+    var brandHref = SignInManager.IsSignedIn(User)
+        ? Url.Action("Index", "MediaFiles")
+        : Url.Action("Login", "Account");
+}
+                <a class="navbar-brand" href="@brandHref">RoomCast</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                         aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Home</a></li>
-                        <li class="nav-item"><a class="nav-link" asp-controller="MediaFiles" asp-action="Index">My Files</a></li>
-                        <li class="nav-item"><a class="nav-link" asp-controller="MediaFiles" asp-action="Upload">Upload</a></li>
-                        <li class="nav-item"><a class="nav-link" asp-controller="Albums" asp-action="Index">Albums</a></li>
-                    </ul>
+                    @if (SignInManager.IsSignedIn(User))
+                    {
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item"><a class="nav-link" asp-controller="MediaFiles" asp-action="Index">My Files</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-controller="MediaFiles" asp-action="Upload">Upload</a></li>
+                            <li class="nav-item"><a class="nav-link" asp-controller="Albums" asp-action="Index">Albums</a></li>
+                        </ul>
+                    }
 
                     <ul class="navbar-nav">
                         @if (SignInManager.IsSignedIn(User))
@@ -48,9 +55,6 @@
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Account" asp-action="Login">Login</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Account" asp-action="Register">Register</a>
                             </li>
                         }
                     </ul>

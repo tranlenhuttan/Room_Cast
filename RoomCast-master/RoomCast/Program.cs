@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using RoomCast.Data;
 using RoomCast.Models;
+using RoomCast.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,12 +14,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
-    options.Password.RequiredLength = 6;
+    options.Password.RequiredLength = 8;
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireDigit = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
+
+builder.Services.Configure<AuthenticationOptions>(
+    builder.Configuration.GetSection(AuthenticationOptions.SectionName));
 
 // Add MVC + Razor Pages
 builder.Services.AddControllersWithViews();
@@ -40,8 +45,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapControllers();
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 app.Run();

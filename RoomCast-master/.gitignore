@@ -361,3 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# RoomCast runtime uploads
+RoomCast/wwwroot/uploads/
+
+# Local development state
+RoomCast/app.db
+RoomCast/app.db-*
+AGENTS.md
+mise.toml
+
+# Ignore environment configuration files
+../mise.toml
+../AGENTS.md
+../PROJECT.md

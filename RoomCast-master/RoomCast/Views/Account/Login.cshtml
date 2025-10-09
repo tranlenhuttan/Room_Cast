@@ -1,27 +1,201 @@
-﻿@model RoomCast.Models.ViewModels.LoginViewModel
+﻿@using RoomCast.Models.ViewModels
+@model LoginViewModel
 @{
     ViewData["Title"] = "Login";
+    var registerModel = new RegisterViewModel();
 }
-<h2>@ViewData["Title"]</h2>
-<form asp-action="Login" method="post">
-    @Html.AntiForgeryToken()
-    <div class="mb-3">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" />
-        <span asp-validation-for="Email" class="text-danger"></span>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">Welcome back</h2>
+
+                @if (ViewBag.RegistrationSucceeded == true)
+                {
+                    <div class="alert alert-success" role="alert">
+                        Registration complete. Please sign in with your new account.
+                    </div>
+                }
+
+                <form asp-action="Login" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" autocomplete="email" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Password" class="form-label"></label>
+                        <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input asp-for="RememberMe" class="form-check-input" />
+                        <label asp-for="RememberMe" class="form-check-label"></label>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Sign in</button>
+                    </div>
+                </form>
+
+                <hr class="my-4" />
+
+                <div class="text-center">
+                    <p class="mb-2">Need an account?</p>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#registerModal">
+                        Register
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="mb-3">
-        <label asp-for="Password" class="form-label"></label>
-        <input asp-for="Password" class="form-control" />
-        <span asp-validation-for="Password" class="text-danger"></span>
+</div>
+
+<div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="registerModalLabel">Create your account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="registerAlert" class="alert d-none" role="alert"></div>
+                <form id="registerForm" asp-controller="Account" asp-action="Register" method="post" novalidate>
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label asp-for="@registerModel.Email" class="form-label"></label>
+                        <input asp-for="@registerModel.Email" class="form-control" autocomplete="email" />
+                        <span class="text-danger small" data-field="Email"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="@registerModel.Password" class="form-label"></label>
+                        <input asp-for="@registerModel.Password" class="form-control" autocomplete="new-password" />
+                        <div class="form-text">Use at least 8 characters, mixing letters and numbers.</div>
+                        <span class="text-danger small" data-field="Password"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="@registerModel.ConfirmPassword" class="form-label"></label>
+                        <input asp-for="@registerModel.ConfirmPassword" class="form-control" autocomplete="new-password" />
+                        <span class="text-danger small" data-field="ConfirmPassword"></span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Register</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <div class="form-check mb-3">
-        <input asp-for="RememberMe" class="form-check-input" />
-        <label asp-for="RememberMe" class="form-check-label"></label>
-    </div>
-    <button type="submit" class="btn btn-primary">Login</button>
-</form>
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const registerForm = document.getElementById('registerForm');
+            const registerAlert = document.getElementById('registerAlert');
+            const modalEl = document.getElementById('registerModal');
+            const bootstrapModal = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+
+            const resetAlert = () => {
+                if (!registerAlert) return;
+                registerAlert.className = 'alert d-none';
+                registerAlert.textContent = '';
+            };
+
+            const renderAlert = (message, type) => {
+                if (!registerAlert) return;
+                registerAlert.className = `alert alert-${type}`;
+                registerAlert.textContent = message;
+            };
+
+            const clearFieldErrors = () => {
+                registerForm?.querySelectorAll('span[data-field]').forEach(element => {
+                    element.textContent = '';
+                });
+            };
+
+            registerForm?.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                clearFieldErrors();
+                resetAlert();
+
+                try {
+                    const formData = new FormData(registerForm);
+                    const actionUrl = registerForm.getAttribute('action') ?? '/Account/Register';
+                    const response = await fetch(actionUrl, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    });
+
+                    const data = await response.json().catch(() => null);
+
+                    if (!response.ok) {
+                        const validationErrors = data?.errors ?? {};
+
+                        Object.entries(validationErrors).forEach(([key, messages]) => {
+                            if (key === 'General') {
+                                renderAlert(messages.join(' '), 'danger');
+                                return;
+                            }
+
+                            const field = registerForm.querySelector(`span[data-field="${key}"]`);
+                            if (field) {
+                                field.textContent = messages.join(' ');
+                            }
+                        });
+
+                        if (!Object.keys(validationErrors).length) {
+                            renderAlert('Registration failed. Please try again.', 'danger');
+                        }
+                        else if (!validationErrors.General) {
+                            renderAlert('Please fix the highlighted errors.', 'danger');
+                        }
+
+                        return;
+                    }
+
+                    if (!data) {
+                        renderAlert('Registration successful. You can now log in.', 'success');
+                        registerForm.reset();
+                        setTimeout(() => {
+                            resetAlert();
+                            bootstrapModal?.hide();
+                        }, 1000);
+                        return;
+                    }
+
+                    if (data?.autoLogin && data?.redirectUrl) {
+                        renderAlert('Registration successful. Redirecting...', 'success');
+                        setTimeout(() => {
+                            window.location.href = data.redirectUrl;
+                        }, 500);
+                        return;
+                    }
+
+                    renderAlert(data?.message ?? 'Registration successful. You can now log in.', 'success');
+                    registerForm.reset();
+                    setTimeout(() => {
+                        resetAlert();
+                        bootstrapModal?.hide();
+                    }, 1000);
+                }
+                catch (error) {
+                    renderAlert('An unexpected error occurred. Please try again.', 'danger');
+                    console.error('Registration error', error);
+                }
+            });
+        })();
+    </script>
 }
