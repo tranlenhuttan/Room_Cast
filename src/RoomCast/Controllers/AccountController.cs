@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using RoomCast.Models;
 using RoomCast.Models.ViewModels;
@@ -25,58 +24,32 @@ namespace RoomCast.Controllers
             _authOptions = authOptions.Value;
         }
 
-        private bool IsAjaxRequest()
-        {
-            if (Request == null) return false;
-            if (Request.Headers.TryGetValue("X-Requested-With", out var requestedWith))
-            {
-                return string.Equals(requestedWith, "XMLHttpRequest", System.StringComparison.OrdinalIgnoreCase);
-            }
-
-            return false;
-        }
-
-        private IActionResult BuildRegisterErrorResponse()
-        {
-            var errorDictionary = ModelState
-                .Where(kvp => kvp.Value?.Errors.Count > 0)
-                .ToDictionary(
-                    kvp => string.IsNullOrEmpty(kvp.Key) ? "General" : kvp.Key,
-                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray());
-
-            return BadRequest(new { errors = errorDictionary });
-        }
-
         [HttpGet]
-        public IActionResult Register()
+        public IActionResult SignUp()
         {
             if (_signInManager.IsSignedIn(User))
             {
                 return RedirectToAction("Index", "MediaFiles");
             }
 
-            return View();
+            return View(new SignUpViewModel());
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Register(RegisterViewModel model)
+        public async Task<IActionResult> SignUp(SignUpViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                if (IsAjaxRequest())
-                {
-                    return BuildRegisterErrorResponse();
-                }
+            if (!ModelState.IsValid) return View(model);
 
-                return View(model);
-            }
-
+            var trimmedFirstName = model.FirstName.Trim();
+            var trimmedLastName = model.LastName.Trim();
             var user = new ApplicationUser
             {
                 UserName = model.Email,
                 Email = model.Email,
-                FullName = model.Email,
+                FirstName = trimmedFirstName,
+                LastName = trimmedLastName,
+                FullName = $"{trimmedFirstName} {trimmedLastName}".Trim(),
                 Date = DateTime.UtcNow
             };
 
@@ -86,39 +59,14 @@ namespace RoomCast.Controllers
                 if (_authOptions.AutoLoginAfterRegistration)
                 {
                     await _signInManager.SignInAsync(user, isPersistent: false);
-                    if (IsAjaxRequest())
-                    {
-                        return Ok(new
-                        {
-                            success = true,
-                            autoLogin = true,
-                            redirectUrl = Url.Action("Index", "MediaFiles")
-                        });
-                    }
-
                     return RedirectToAction("Index", "MediaFiles");
                 }
 
                 TempData["RegisterSuccess"] = true;
-                if (IsAjaxRequest())
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        autoLogin = false,
-                        message = "Registration successful. Please sign in."
-                    });
-                }
-
-                return RedirectToAction("Login");
+                return RedirectToAction(nameof(Login));
             }
 
             foreach (var e in result.Errors) ModelState.AddModelError("", e.Description);
-            if (IsAjaxRequest())
-            {
-                return BuildRegisterErrorResponse();
-            }
-
             return View(model);
         }
 
