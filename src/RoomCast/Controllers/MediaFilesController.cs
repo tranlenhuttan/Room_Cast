@@ -18,9 +18,9 @@ namespace RoomCast.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _environment;
-        private readonly UserManager<IdentityUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public MediaFilesController(ApplicationDbContext context, IWebHostEnvironment environment, UserManager<IdentityUser> userManager)
+        public MediaFilesController(ApplicationDbContext context, IWebHostEnvironment environment, UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _environment = environment;
@@ -123,5 +123,4 @@ namespace RoomCast.Controllers
         }
     }
 }
-
 
