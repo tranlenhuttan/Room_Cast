@@ -45,6 +45,8 @@ namespace RoomCast.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "TEXT", nullable: false),
+                    FirstName = table.Column<string>(type: "TEXT", nullable: false, defaultValue: ""),
+                    LastName = table.Column<string>(type: "TEXT", nullable: false, defaultValue: ""),
                     FullName = table.Column<string>(type: "TEXT", nullable: false),
                     Date = table.Column<DateTime>(type: "TEXT", nullable: false),
                     UserName = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),

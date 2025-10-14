@@ -370,3 +370,4 @@ FodyWeavers.xsd
 # Repository-specific files
 AGENTS.md
 mise.toml
+src/RoomCast/wwwroot/uploads/

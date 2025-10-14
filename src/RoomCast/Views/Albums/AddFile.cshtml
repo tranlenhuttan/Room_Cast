@@ -12,11 +12,10 @@
         <select name="fileId" class="form-control">
             @foreach (var file in ViewBag.Files)
             {
-                <option value="@file.FileId">@file.FileName (@file.FileType)</option>
+                <option value="@file.FileId">@file.Title (@file.FileType)</option>
             }
         </select>
     </div>
 
     <button type="submit" class="btn btn-primary">Add</button>
 </form>
-

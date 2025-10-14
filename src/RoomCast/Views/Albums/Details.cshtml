@@ -12,19 +12,19 @@
         var item = Model.AlbumFiles.ElementAt(i).MediaFile;
 
         <div class="slide" style="display:@(i == 0 ? "block" : "none")">
-            @if (item.FileType == "Image")
+            @if (string.Equals(item.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(item.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
             {
                 <img src="@item.FilePath" style="max-width:100%; height:auto;" />
             }
-            else if (item.FileType == "Video")
+            else if (string.Equals(item.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
             {
-                <video controls style="max-width:100%;">
+                <video controls style="max-width:100%;" poster="@item.ThumbnailPath">
                     <source src="@item.FilePath" type="video/mp4" />
                 </video>
             }
             else
             {
-                <p><a href="@item.FilePath" target="_blank">@item.FileName</a></p>
+                <p><a href="@item.FilePath" target="_blank">@item.Title</a></p>
             }
         </div>
     }
