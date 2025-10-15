@@ -178,6 +178,47 @@ namespace RoomCast.Controllers
             return View(file);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var media = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (media == null)
+            {
+                TempData["Error"] = "The selected file could not be found.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var title = media.Title;
+            var filePath = media.FilePath;
+            var thumbnailPath = media.ThumbnailPath;
+
+            _context.MediaFiles.Remove(media);
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Failed to delete media file {FileId} for user {UserId}", id, user.Id);
+                TempData["Error"] = "We couldn't delete the file right now. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            TryDeletePhysicalFile(filePath);
+            TryDeletePhysicalFile(thumbnailPath);
+
+            TempData["Message"] = $"Deleted '{title}' successfully.";
+            return RedirectToAction(nameof(Index));
+        }
+
         private static void PopulateAllowedExtensions(FileUploadViewModel model)
         {
             var dictionary = AllowedExtensions.ToDictionary(
@@ -339,6 +380,39 @@ namespace RoomCast.Controllers
             }
 
             return null;
+        }
+
+        private void TryDeletePhysicalFile(string? relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                return;
+            }
+
+            string physicalPath;
+            if (Path.IsPathRooted(relativePath))
+            {
+                physicalPath = relativePath;
+            }
+            else
+            {
+                var trimmedPath = relativePath.TrimStart('~', '/', '\\')
+                    .Replace('/', Path.DirectorySeparatorChar)
+                    .Replace('\\', Path.DirectorySeparatorChar);
+                physicalPath = Path.Combine(_environment.WebRootPath, trimmedPath);
+            }
+
+            try
+            {
+                if (System.IO.File.Exists(physicalPath))
+                {
+                    System.IO.File.Delete(physicalPath);
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
+            {
+                _logger.LogWarning(ex, "Failed to delete file at path {FilePath}", physicalPath);
+            }
         }
     }
 }
