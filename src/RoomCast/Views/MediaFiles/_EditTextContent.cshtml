@@ -1,0 +1,17 @@
+@model RoomCast.Models.ViewModels.MediaFileEditViewModel
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <strong>Text Content</strong>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">
+            Maximum size: @(Model.MaximumTextFileBytes / (1024 * 1024)) MB. Empty submissions are not allowed.
+        </p>
+        <div class="mb-3">
+            <label asp-for="TextContent" class="form-label"></label>
+            <textarea asp-for="TextContent" class="form-control" rows="18" spellcheck="false"></textarea>
+            <span asp-validation-for="TextContent" class="text-danger"></span>
+        </div>
+    </div>
+</div>

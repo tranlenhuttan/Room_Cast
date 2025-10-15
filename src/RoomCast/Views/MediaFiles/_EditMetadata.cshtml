@@ -1,0 +1,69 @@
+@model RoomCast.Models.ViewModels.MediaFileEditViewModel
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <strong>Metadata</strong>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label asp-for="Title" class="form-label"></label>
+            <input asp-for="Title" class="form-control" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Tags" class="form-label"></label>
+            <input asp-for="Tags" class="form-control" />
+            <span asp-validation-for="Tags" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Category" class="form-label"></label>
+            <input asp-for="Category" class="form-control" />
+            <span asp-validation-for="Category" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Visibility" class="form-label"></label>
+            <select asp-for="Visibility" class="form-select" asp-items="Model.VisibilityOptions"></select>
+            <span asp-validation-for="Visibility" class="text-danger"></span>
+        </div>
+
+        <hr />
+
+        <dl class="row small mb-0">
+            <dt class="col-5 text-muted">File Type</dt>
+            <dd class="col-7">@Model.FileType</dd>
+
+            <dt class="col-5 text-muted">Format</dt>
+            <dd class="col-7">@Model.FileFormat</dd>
+
+            <dt class="col-5 text-muted">File Size</dt>
+            <dd class="col-7">@string.Format("{0:0.##} MB", Model.FileSize / (1024d * 1024d))</dd>
+
+            <dt class="col-5 text-muted">Last Updated</dt>
+            <dd class="col-7">@Model.UpdatedAt.ToLocalTime().ToString("g")</dd>
+
+            @if (!string.IsNullOrWhiteSpace(Model.UpdatedByDisplayName))
+            {
+                <dt class="col-5 text-muted">Updated By</dt>
+                <dd class="col-7">@Model.UpdatedByDisplayName</dd>
+            }
+
+            <dt class="col-5 text-muted">Created</dt>
+            <dd class="col-7">@Model.CreatedAt.ToLocalTime().ToString("g")</dd>
+
+            @if (Model.DurationSeconds.HasValue)
+            {
+                <dt class="col-5 text-muted">Duration</dt>
+                <dd class="col-7">@TimeSpan.FromSeconds(Model.DurationSeconds.Value).ToString("hh\\:mm\\:ss")</dd>
+            }
+        </dl>
+    </div>
+</div>

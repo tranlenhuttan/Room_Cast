@@ -1,0 +1,28 @@
+@model RoomCast.Models.ViewModels.MediaFileEditViewModel
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <strong>Image Preview</strong>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 text-center">
+            <img src="@Model.FilePath"
+                 alt="@Model.Title"
+                 class="img-fluid rounded"
+                 style="max-height: 320px; object-fit: contain;" />
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="ImageReplacement" class="form-label">Replace Image</label>
+            <input asp-for="ImageReplacement"
+                   class="form-control"
+                   type="file"
+                   accept=".jpg,.jpeg,.png,.gif,.bmp,.webp" />
+            <span asp-validation-for="ImageReplacement" class="text-danger"></span>
+            <p class="form-text">
+                Upload a new image to replace the existing file. Max size: @(Model.MaximumUploadBytes / (1024 * 1024)) MB.
+                Supported formats: .jpg, .jpeg, .png, .gif, .bmp, .webp.
+            </p>
+        </div>
+    </div>
+</div>

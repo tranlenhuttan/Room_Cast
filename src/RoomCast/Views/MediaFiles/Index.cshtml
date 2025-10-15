@@ -196,6 +196,11 @@ else
                             <a href="@file.FilePath" target="_blank" class="btn btn-outline-primary w-100">
                                 Open
                             </a>
+                            <a asp-action="Edit"
+                               asp-route-id="@file.FileId"
+                               class="btn btn-primary w-100">
+                                Edit
+                            </a>
                             <button type="button"
                                     class="btn btn-outline-danger w-100"
                                     data-bs-toggle="modal"

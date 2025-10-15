@@ -1,0 +1,50 @@
+@model RoomCast.Models.ViewModels.MediaFileEditViewModel
+
+@{
+    ViewData["Title"] = $"Edit {Model.Title}";
+}
+
+<h2 class="mb-4">@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data" class="needs-validation">
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.FileId)
+
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="row g-4">
+        <div class="col-12 col-lg-8">
+            @if (Model.IsTextFile)
+            {
+                <partial name="_EditTextContent" model="Model" />
+            }
+            else if (Model.IsImageFile)
+            {
+                <partial name="_EditImageContent" model="Model" />
+            }
+            else if (Model.IsVideoFile)
+            {
+                <partial name="_EditVideoContent" model="Model" />
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    Content editing is not supported for this file type. You can still update the metadata on the right.
+                </div>
+            }
+        </div>
+        <div class="col-12 col-lg-4">
+            <partial name="_EditMetadata" model="Model" />
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a asp-action="Details" asp-route-id="@Model.FileId" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using RoomCast.Data;
 using RoomCast.Models;
 using RoomCast.Models.ViewModels;
+using RoomCast.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -35,13 +36,20 @@ namespace RoomCast.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<MediaFilesController> _logger;
+        private readonly IMediaFileEditService _editService;
 
-        public MediaFilesController(ApplicationDbContext context, IWebHostEnvironment environment, UserManager<ApplicationUser> userManager, ILogger<MediaFilesController> logger)
+        public MediaFilesController(
+            ApplicationDbContext context,
+            IWebHostEnvironment environment,
+            UserManager<ApplicationUser> userManager,
+            ILogger<MediaFilesController> logger,
+            IMediaFileEditService editService)
         {
             _context = context;
             _environment = environment;
             _userManager = userManager;
             _logger = logger;
+            _editService = editService;
         }
 
         // GET: List Files
@@ -120,6 +128,8 @@ namespace RoomCast.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
 
+            var utcNow = DateTime.UtcNow;
+
             var media = new MediaFile
             {
                 UserId = user.Id,
@@ -131,7 +141,10 @@ namespace RoomCast.Controllers
                 ContentType = model.File.ContentType ?? string.Empty,
                 Tags = model.Tags?.Trim() ?? string.Empty,
                 FileSize = model.File.Length,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = utcNow,
+                UpdatedAt = utcNow,
+                UpdatedBy = user.Id,
+                Visibility = "Private"
             };
 
             var uploadSubFolder = GetUploadFolder(normalizedType);
@@ -176,6 +189,82 @@ namespace RoomCast.Controllers
             }
 
             return View(file);
+        }
+
+        // GET: Edit
+        public async Task<IActionResult> Edit(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var viewModel = await _editService.BuildEditViewModelAsync(id, user);
+            if (viewModel == null)
+            {
+                return NotFound();
+            }
+
+            return View(viewModel);
+        }
+
+        // POST: Edit
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(MediaFileEditViewModel model)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var result = await _editService.UpdateAsync(model, user);
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                {
+                    if (string.IsNullOrEmpty(error.FieldName))
+                    {
+                        ModelState.AddModelError(string.Empty, error.Message);
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(error.FieldName, error.Message);
+                    }
+                }
+
+                var refreshedModel = await _editService.BuildEditViewModelAsync(model.FileId, user);
+                if (refreshedModel != null)
+                {
+                    model.FileType = refreshedModel.FileType;
+                    model.FileFormat = refreshedModel.FileFormat;
+                    model.FilePath = refreshedModel.FilePath;
+                    model.ThumbnailPath = refreshedModel.ThumbnailPath;
+                    model.DurationSeconds = refreshedModel.DurationSeconds;
+                    model.IsImageFile = refreshedModel.IsImageFile;
+                    model.IsVideoFile = refreshedModel.IsVideoFile;
+                    model.IsTextFile = refreshedModel.IsTextFile;
+                    model.MaximumTextFileBytes = refreshedModel.MaximumTextFileBytes;
+                    model.MaximumUploadBytes = refreshedModel.MaximumUploadBytes;
+                    model.CreatedAt = refreshedModel.CreatedAt;
+                    model.UpdatedAt = refreshedModel.UpdatedAt;
+                    model.UpdatedByDisplayName = refreshedModel.UpdatedByDisplayName;
+                    model.FileSize = refreshedModel.FileSize;
+                    model.VisibilityOptions = refreshedModel.VisibilityOptions;
+
+                    if (model.IsTextFile && string.IsNullOrEmpty(model.TextContent))
+                    {
+                        model.TextContent = refreshedModel.TextContent;
+                    }
+                }
+
+                return View(model);
+            }
+
+            if (result.UpdatedFile != null)
+            {
+                TempData["Message"] = $"Updated '{result.UpdatedFile.Title}' successfully.";
+                return RedirectToAction(nameof(Details), new { id = result.UpdatedFile.FileId });
+            }
+
+            TempData["Message"] = "Updates saved successfully.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
