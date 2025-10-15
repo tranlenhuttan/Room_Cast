@@ -18,31 +18,52 @@
 <table class="table">
     <thead>
         <tr>
-            <th>File Name</th>
+            <th>Title</th>
             <th>Type</th>
+            <th>Size</th>
+            <th>Uploaded</th>
             <th>Tags</th>
-            <th>Date</th>
             <th>Preview</th>
         </tr>
     </thead>
     <tbody>
         @foreach (var file in Model)
         {
+            var uploadedAt = file.CreatedAt.ToLocalTime().ToString("g");
+            var sizeInMb = file.FileSize / (1024d * 1024d);
+            var duration = file.DurationSeconds.HasValue ? System.TimeSpan.FromSeconds(file.DurationSeconds.Value) : (System.TimeSpan?)null;
+            var durationLabel = duration.HasValue
+                ? (duration.Value.TotalHours >= 1
+                    ? duration.Value.ToString(@"hh\:mm\:ss")
+                    : duration.Value.ToString(@"mm\:ss"))
+                : null;
             <tr>
-                <td>@file.FileName</td>
+                <td>@file.Title</td>
                 <td>@file.FileType</td>
+                <td>@string.Format("{0:0.##} MB", sizeInMb)</td>
+                <td>@uploadedAt</td>
                 <td>@file.Tags</td>
-                <td>@file.Timestamp</td>
                 <td>
-                    @if (file.FileType == "Image")
+                    @if (string.Equals(file.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(file.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        <img src="@file.FilePath" width="100" />
+                        <img src="@file.FilePath" alt="@file.Title" width="120" class="img-thumbnail" />
                     }
-                    else if (file.FileType == "Video")
+                    else if (string.Equals(file.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
                     {
-                        <video width="200" controls>
-                            <source src="@file.FilePath" type="video/mp4" />
-                        </video>
+                        if (!string.IsNullOrEmpty(file.ThumbnailPath))
+                        {
+                            <img src="@file.ThumbnailPath" alt="@file.Title" width="160" class="img-thumbnail" />
+                        }
+                        else
+                        {
+                            <video width="200" controls preload="metadata">
+                                <source src="@file.FilePath" type="video/mp4" />
+                            </video>
+                        }
+                        if (durationLabel != null)
+                        {
+                            <div class="small text-muted">Duration: @durationLabel</div>
+                        }
                     }
                     else
                     {
@@ -53,4 +74,3 @@
         }
     </tbody>
 </table>
-

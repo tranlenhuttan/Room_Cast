@@ -1,28 +1,249 @@
-﻿@{
+﻿@model RoomCast.Models.ViewModels.FileUploadViewModel
+@{
     ViewData["Title"] = "Upload File";
 }
 
 <h2>Upload File</h2>
 
+<style>
+    .upload-dropzone {
+        border: 2px dashed #6c757d;
+        border-radius: 8px;
+        padding: 2.5rem;
+        text-align: center;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+        cursor: pointer;
+    }
+
+    .upload-dropzone.dragover {
+        background-color: #f8f9fa;
+        border-color: #0d6efd;
+    }
+
+    .upload-dropzone .icon {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 0.75rem;
+        color: #0d6efd;
+    }
+
+    .upload-file-info {
+        margin-top: 1rem;
+    }
+
+    .upload-preview {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        background-color: #f8f9fa;
+    }
+
+    .upload-preview .preview-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .upload-preview img,
+    .upload-preview video {
+        max-width: 100%;
+        border-radius: 4px;
+        display: block;
+    }
+
+    .upload-preview .document-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1rem;
+    }
+
+    .upload-preview .document-preview .icon {
+        font-size: 2rem;
+        color: #0d6efd;
+    }
+</style>
+
 <form asp-action="Upload" method="post" enctype="multipart/form-data">
-    <div class="form-group">
-        <label>Select File</label>
-        <input type="file" name="file" class="form-control" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div id="fileDropZone" class="upload-dropzone">
+        <span class="icon">⬆️</span>
+        <strong>Drag &amp; drop</strong> a picture, video, or document here<br />
+    <small class="text-muted">…or click to browse your files</small>
+    <input asp-for="File" id="fileInput" type="file" class="d-none" accept="@string.Join(",", Model.AllowedExtensions)" />
+    </div>
+    <span asp-validation-for="File" class="text-danger"></span>
+
+    <div id="previewContainer" class="upload-preview d-none">
+        <div class="preview-label">Selected File Preview</div>
+        <div id="previewContent"></div>
+    </div>
+
+    <div class="upload-file-info">
+        <div class="form-group">
+            <label asp-for="Title"></label>
+            <input asp-for="Title" class="form-control" placeholder="auto-filled from the selected file" />
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label>Detected Type</label>
+            <input type="text" id="detectedType" class="form-control" readonly placeholder="Select a file to detect type" />
+        </div>
     </div>
 
     <div class="form-group">
-        <label>File Type</label>
-        <select name="fileType" class="form-control">
-            <option>Document</option>
-            <option>Image</option>
-            <option>Video</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label>Tags (comma-separated)</label>
-        <input type="text" name="tags" class="form-control" />
+        <label asp-for="Tags"></label>
+        <input asp-for="Tags" class="form-control" />
+        <small class="form-text text-muted">Optional: separate multiple tags with commas.</small>
+        <span asp-validation-for="Tags" class="text-danger"></span>
     </div>
 
     <button type="submit" class="btn btn-primary">Upload</button>
 </form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        (function () {
+            // Rendered from server to stay aligned with backend validation
+            const allowedExtensions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllowedExtensionsByType));
+
+            const dropZone = document.getElementById('fileDropZone');
+            const fileInput = document.getElementById('fileInput');
+            const titleInput = document.getElementById('Title');
+            const detectedTypeInput = document.getElementById('detectedType');
+            const previewContainer = document.getElementById('previewContainer');
+            const previewContent = document.getElementById('previewContent');
+            let autoTitle = '';
+            let previewUrl = null;
+
+            const setDetectedType = (typeLabel) => {
+                detectedTypeInput.value = typeLabel || '';
+            };
+
+            const detectTypeFromExtension = (extension) => {
+                extension = extension.toLowerCase();
+                for (const [type, extensions] of Object.entries(allowedExtensions)) {
+                    if (extensions.includes(extension)) {
+                        return type;
+                    }
+                }
+                return null;
+            };
+
+            const prettifyBytes = (bytes) => {
+                if (!Number.isFinite(bytes) || bytes <= 0) return '';
+                const units = ['bytes', 'KB', 'MB', 'GB'];
+                let unitIndex = 0;
+                let value = bytes;
+                while (value >= 1024 && unitIndex < units.length - 1) {
+                    value /= 1024;
+                    unitIndex++;
+                }
+                const decimals = unitIndex === 0 ? 0 : 1;
+                return `${value.toFixed(decimals)} ${units[unitIndex]}`;
+            };
+
+            const clearPreview = () => {
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                    previewUrl = null;
+                }
+
+                previewContent.innerHTML = '';
+                previewContainer.classList.add('d-none');
+            };
+
+            const showPreview = (file, detectedType) => {
+                clearPreview();
+
+                if (!file) {
+                    return;
+                }
+
+                if (detectedType === 'Picture') {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const image = document.createElement('img');
+                        image.src = event.target?.result ?? '';
+                        image.alt = 'Selected picture preview';
+                        previewContent.replaceChildren(image);
+                        previewContainer.classList.remove('d-none');
+                    };
+                    reader.readAsDataURL(file);
+                } else if (detectedType === 'Video') {
+                    previewUrl = URL.createObjectURL(file);
+                    const video = document.createElement('video');
+                    video.src = previewUrl;
+                    video.controls = true;
+                    video.preload = 'metadata';
+                    previewContent.replaceChildren(video);
+                    previewContainer.classList.remove('d-none');
+                } else {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'document-preview';
+                    wrapper.innerHTML = `
+                        <span class="icon">📄</span>
+                        <span>
+                            ${file.name}
+                            <div class="text-muted small">Preview unavailable for documents</div>
+                        </span>`;
+                    previewContent.replaceChildren(wrapper);
+                    previewContainer.classList.remove('d-none');
+                }
+            };
+
+            const updateFromFile = (file) => {
+                if (!file) {
+                    setDetectedType('');
+                    clearPreview();
+                    return;
+                }
+
+                const fileName = file.name;
+                const extension = fileName.includes('.') ? `.${fileName.split('.').pop()?.toLowerCase() ?? ''}` : '';
+                const detectedType = detectTypeFromExtension(extension);
+
+                if (!titleInput.dataset.userEdited || titleInput.dataset.userEdited !== 'true') {
+                    autoTitle = fileName.replace(/\.[^/.]+$/, '');
+                    titleInput.value = autoTitle;
+                }
+
+                const sizeLabel = prettifyBytes(file.size);
+                const typeSummary = detectedType ? `${detectedType}${sizeLabel ? ` • ${sizeLabel}` : ''}` : '';
+                setDetectedType(typeSummary || `Unknown${sizeLabel ? ` • ${sizeLabel}` : ''}`);
+                showPreview(file, detectedType);
+            };
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            dropZone.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+
+            dropZone.addEventListener('drop', (event) => {
+                event.preventDefault();
+                dropZone.classList.remove('dragover');
+
+                if (event.dataTransfer?.files?.length) {
+                    fileInput.files = event.dataTransfer.files;
+                    updateFromFile(fileInput.files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                updateFromFile(fileInput.files?.[0]);
+            });
+
+            titleInput.addEventListener('input', () => {
+                const userEdited = titleInput.value !== autoTitle;
+                titleInput.dataset.userEdited = userEdited ? 'true' : 'false';
+            });
+        })();
+    </script>
+}

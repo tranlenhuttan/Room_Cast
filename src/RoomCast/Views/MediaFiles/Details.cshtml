@@ -1,20 +1,51 @@
 ﻿@model RoomCast.Models.MediaFile
 @{
     ViewData["Title"] = "File Details";
+    var sizeInMb = Model.FileSize / (1024d * 1024d);
+    var uploadedAt = Model.CreatedAt.ToLocalTime().ToString("f");
+    var duration = Model.DurationSeconds.HasValue ? System.TimeSpan.FromSeconds(Model.DurationSeconds.Value) : (System.TimeSpan?)null;
+    var durationDisplay = duration.HasValue
+        ? (duration.Value.TotalHours >= 1
+            ? duration.Value.ToString(@"hh\:mm\:ss")
+            : duration.Value.ToString(@"mm\:ss"))
+        : null;
 }
 
-<h2>@Model.FileName</h2>
-<p><strong>Type:</strong> @Model.FileType</p>
-<p><strong>Tags:</strong> @Model.Tags</p>
-<p><strong>Uploaded:</strong> @Model.Timestamp</p>
+<h2>@Model.Title</h2>
 
-@if (Model.FileType == "Image")
+<dl class="row">
+    <dt class="col-sm-3">Original File</dt>
+    <dd class="col-sm-9">@Model.OriginalFileName</dd>
+
+    <dt class="col-sm-3">Type</dt>
+    <dd class="col-sm-9">@Model.FileType (@Model.FileFormat)</dd>
+
+    <dt class="col-sm-3">Size</dt>
+    <dd class="col-sm-9">@string.Format("{0:0.##} MB", sizeInMb)</dd>
+
+    <dt class="col-sm-3">Uploaded</dt>
+    <dd class="col-sm-9">@uploadedAt</dd>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Tags))
+    {
+        <dt class="col-sm-3">Tags</dt>
+        <dd class="col-sm-9">@Model.Tags</dd>
+    }
+
+    @if (durationDisplay != null)
+    {
+        <dt class="col-sm-3">Duration</dt>
+        <dd class="col-sm-9">@durationDisplay</dd>
+    }
+</dl>
+
+@if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
 {
-    <img src="@Model.FilePath" style="max-width:100%;" />
+    <img src="@Model.FilePath" style="max-width:100%;" alt="@Model.Title" />
 }
-else if (Model.FileType == "Video")
+else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
 {
-    <video controls style="max-width:100%;">
+    <video controls style="max-width:100%;" poster="@Model.ThumbnailPath">
         <source src="@Model.FilePath" type="video/mp4" />
     </video>
 }
