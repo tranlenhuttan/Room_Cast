@@ -25,6 +25,74 @@
     var files = Model?.ToList() ?? new System.Collections.Generic.List<RoomCast.Models.MediaFile>();
 }
 
+<div class="modal fade" id="deleteFileModal" tabindex="-1" aria-labelledby="deleteFileModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" asp-action="Delete" class="modal-content">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" id="delete-file-id" />
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFileModalLabel">Delete File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">
+                    Are you sure you want to delete
+                    <strong id="delete-file-name">this file</strong>?
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script>
+        (() => {
+            const deleteModal = document.getElementById('deleteFileModal');
+            if (!deleteModal) {
+                return;
+            }
+
+            deleteModal.addEventListener('show.bs.modal', event => {
+                const trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                const fileId = trigger.getAttribute('data-file-id');
+                const fileTitle = trigger.getAttribute('data-file-title') ?? 'this file';
+
+                const idInput = deleteModal.querySelector('#delete-file-id');
+                const titleSpan = deleteModal.querySelector('#delete-file-name');
+
+                if (idInput) {
+                    idInput.value = fileId ?? '';
+                }
+
+                if (titleSpan) {
+                    titleSpan.textContent = fileTitle;
+                }
+            });
+
+            deleteModal.addEventListener('hidden.bs.modal', () => {
+                const idInput = deleteModal.querySelector('#delete-file-id');
+                if (idInput) {
+                    idInput.value = '';
+                }
+                const titleSpan = deleteModal.querySelector('#delete-file-name');
+                if (titleSpan) {
+                    titleSpan.textContent = 'this file';
+                }
+            });
+        })();
+    </script>
+}
+
 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
     <h2 class="mb-0">My Files</h2>
     <form method="get" class="d-flex gap-2">
@@ -36,6 +104,10 @@
 @if (TempData["Message"] != null)
 {
     <div class="alert alert-success">@TempData["Message"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
 }
 
 @if (!files.Any())
@@ -120,10 +192,18 @@ else
                             </div>
                         </div>
 
-                        <div class="mt-auto">
+                        <div class="mt-auto d-grid gap-2">
                             <a href="@file.FilePath" target="_blank" class="btn btn-outline-primary w-100">
                                 Open
                             </a>
+                            <button type="button"
+                                    class="btn btn-outline-danger w-100"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteFileModal"
+                                    data-file-id="@file.FileId"
+                                    data-file-title="@file.Title">
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
