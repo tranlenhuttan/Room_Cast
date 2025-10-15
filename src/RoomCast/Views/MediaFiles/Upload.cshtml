@@ -70,8 +70,8 @@
     <div id="fileDropZone" class="upload-dropzone">
         <span class="icon">⬆️</span>
         <strong>Drag &amp; drop</strong> a picture, video, or document here<br />
-        <small class="text-muted">…or click to browse your files</small>
-        <input asp-for="File" id="fileInput" type="file" class="d-none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp,.mp4,.mov,.m4v,.avi,.mkv" />
+    <small class="text-muted">…or click to browse your files</small>
+    <input asp-for="File" id="fileInput" type="file" class="d-none" accept="@string.Join(",", Model.AllowedExtensions)" />
     </div>
     <span asp-validation-for="File" class="text-danger"></span>
 
@@ -107,11 +107,8 @@
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     <script>
         (function () {
-            const allowedExtensions = {
-                Picture: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'],
-                Video: ['.mp4', '.mov', '.m4v', '.avi', '.mkv'],
-                Document: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt']
-            };
+            // Rendered from server to stay aligned with backend validation
+            const allowedExtensions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.AllowedExtensionsByType));
 
             const dropZone = document.getElementById('fileDropZone');
             const fileInput = document.getElementById('fileInput');

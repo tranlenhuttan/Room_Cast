@@ -1,4 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace RoomCast.Models.ViewModels
@@ -16,5 +19,12 @@ namespace RoomCast.Models.ViewModels
         [Required]
         [Display(Name = "File")]
         public IFormFile? File { get; set; }
+
+        [BindNever]
+        public IReadOnlyList<string> AllowedExtensions { get; set; } = Array.Empty<string>();
+
+        [BindNever]
+        public IReadOnlyDictionary<string, IReadOnlyList<string>> AllowedExtensionsByType { get; set; }
+            = new Dictionary<string, IReadOnlyList<string>>();
     }
 }

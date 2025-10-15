@@ -67,7 +67,9 @@ namespace RoomCast.Controllers
         // GET: Upload Page
         public IActionResult Upload()
         {
-            return View(new FileUploadViewModel());
+            var model = new FileUploadViewModel();
+            PopulateAllowedExtensions(model);
+            return View(model);
         }
 
         // POST: Upload File
@@ -75,6 +77,8 @@ namespace RoomCast.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Upload(FileUploadViewModel model)
         {
+            PopulateAllowedExtensions(model);
+
             if (!ModelState.IsValid)
             {
                 return View(model);
@@ -159,10 +163,38 @@ namespace RoomCast.Controllers
         // GET: Details
         public async Task<IActionResult> Details(int id)
         {
-            var file = await _context.MediaFiles.FirstOrDefaultAsync(m => m.FileId == id);
-            if (file == null) return NotFound();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var file = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (file == null)
+            {
+                return NotFound();
+            }
 
             return View(file);
+        }
+
+        private static void PopulateAllowedExtensions(FileUploadViewModel model)
+        {
+            var dictionary = AllowedExtensions.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (IReadOnlyList<string>)kvp.Value
+                    .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                StringComparer.OrdinalIgnoreCase);
+
+            var flatList = dictionary.Values
+                .SelectMany(v => v)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(ext => ext, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            model.AllowedExtensionsByType = dictionary;
+            model.AllowedExtensions = flatList;
         }
 
         private static string GetUploadFolder(string fileType) =>
@@ -207,12 +239,14 @@ namespace RoomCast.Controllers
             var startInfo = new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-i \"{videoPhysicalPath}\"",
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            startInfo.ArgumentList.Add("-i");
+            startInfo.ArgumentList.Add(videoPhysicalPath);
 
             try
             {
@@ -260,12 +294,22 @@ namespace RoomCast.Controllers
             var startInfo = new ProcessStartInfo
             {
                 FileName = "ffmpeg",
-                Arguments = $"-ss 00:00:01 -i \"{videoPhysicalPath}\" -frames:v 1 -q:v 2 \"{thumbnailPhysicalPath}\" -y",
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            startInfo.ArgumentList.Add("-ss");
+            startInfo.ArgumentList.Add("00:00:01");
+            startInfo.ArgumentList.Add("-i");
+            startInfo.ArgumentList.Add(videoPhysicalPath);
+            startInfo.ArgumentList.Add("-frames:v");
+            startInfo.ArgumentList.Add("1");
+            startInfo.ArgumentList.Add("-q:v");
+            startInfo.ArgumentList.Add("2");
+            startInfo.ArgumentList.Add("-y");
+            startInfo.ArgumentList.Add(thumbnailPhysicalPath);
 
             try
             {
