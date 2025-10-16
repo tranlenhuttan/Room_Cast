@@ -36,52 +36,37 @@
         : Model.ContentType;
 }
 
-<div class="card h-100 shadow-sm rounded-3">
-    <div class="card-header bg-transparent border-0 pb-0">
-        <div class="d-flex align-items-center gap-3">
-            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
-                <i class="bi @iconClass fs-5" styles="width: 20px;"></i>
+<div class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg">
+    <div class="px-5 pt-5">
+        <div class="flex items-start gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <i class="bi @iconClass text-xl"></i>
             </div>
-            <div class="flex-grow-1" style="min-width: 0;">
-                <h5 class="mb-0 text-truncate" title="@Model.Title">@Model.Title</h5>
-                <small class="text-muted text-uppercase">@Model.FileType</small>
+            <div class="min-w-0 flex-1">
+                <h5 class="truncate text-base font-semibold text-slate-900" title="@Model.Title">@Model.Title</h5>
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">@Model.FileType</p>
             </div>
-            <div class="dropdown ms-auto">
-                <button class="btn btn-link text-muted px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-three-dots-vertical fs-5"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <a class="dropdown-item d-flex align-items-center" href="@Model.FilePath" target="_blank">
-                            <i class="bi bi-box-arrow-up-right me-2"></i>
-                            Open
-                        </a>
-                    </li>
-                    <li><hr class="dropdown-divider" /></li>
-                    <li>
-                        <button type="button"
-                                class="dropdown-item text-danger d-flex align-items-center gap-2"
-                                data-bs-toggle="modal"
-                                data-bs-target="#deleteFileModal"
-                                data-file-id="@Model.FileId"
-                                data-file-title="@Model.Title">
-                            <i class="bi bi-trash"></i>
-                            Delete
-                        </button>
-                    </li>
-                </ul>
-            </div>
+            @if (durationLabel != null || sizeInMb > 0)
+            {
+                <div class="flex shrink-0 flex-col items-end gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                    @if (durationLabel != null)
+                    {
+                        <span>@durationLabel</span>
+                    }
+                    <span>@string.Format("{0:0.##} MB", sizeInMb)</span>
+                </div>
+            }
         </div>
     </div>
 
-    <div class="card-body d-flex flex-column px-2">
-        <div class="rounded-3 overflow-hidden bg-body-tertiary d-flex align-items-center justify-content-center" style="height: 180px;">
+    <div class="mt-4 flex flex-1 flex-col px-5">
+        <div class="flex h-48 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50">
             @if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
             {
                 <img src="@Model.FilePath"
                      alt="@Model.Title"
-                     class="w-100 h-100 object-fit-cover" />
+                     class="h-full w-full object-cover" />
             }
             else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
             {
@@ -89,26 +74,41 @@
                 {
                     <img src="@Model.ThumbnailPath"
                          alt="@Model.Title"
-                         class="w-100 h-100 object-fit-cover" />
+                         class="h-full w-full object-cover" />
                 }
                 else
                 {
-                    <video class="w-100 h-100" controls preload="metadata">
+                    <video class="h-full w-full rounded-xl" controls preload="metadata">
                         <source src="@Model.FilePath" type="@videoContentType" />
                     </video>
                 }
             }
             else
             {
-                <div class="text-center text-muted">
-                    <i class="bi @iconClass fs-1 d-block mb-2"></i>
-                    <span class="small">No preview available</span>
+                <div class="flex flex-col items-center gap-2 text-center text-slate-500">
+                    <i class="bi @iconClass text-3xl"></i>
+                    <span class="text-sm">No preview available</span>
                 </div>
             }
         </div>
     </div>
 
-    <div class="card-footer bg-transparent border-0 pt-0">
-        <small class="text-muted">Uploaded @uploadedAt</small>
+    <div class="flex items-center justify-between gap-3 px-5 pb-5 pt-4">
+        <small class="text-xs text-slate-500">Uploaded @uploadedAt</small>
+        <div class="flex items-center gap-2">
+            <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+               href="@Model.FilePath"
+               target="_blank"
+               rel="noopener noreferrer">
+                Open
+            </a>
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                    data-delete-trigger
+                    data-file-id="@Model.FileId"
+                    data-file-title="@Model.Title">
+                Delete
+            </button>
+        </div>
     </div>
 </div>

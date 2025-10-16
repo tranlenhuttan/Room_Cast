@@ -11,45 +11,70 @@
         : null;
 }
 
-<h2>@Model.Title</h2>
+<div class="flex flex-col gap-8 lg:flex-row">
+    <section class="flex-1 space-y-6">
+        <div class="flex flex-col gap-3">
+            <h2 class="text-3xl font-semibold text-slate-900">@Model.Title</h2>
+            <p class="text-sm text-slate-500">Uploaded @uploadedAt</p>
+        </div>
 
-<dl class="row">
-    <dt class="col-sm-3">Original File</dt>
-    <dd class="col-sm-9">@Model.OriginalFileName</dd>
+        <dl class="grid grid-cols-1 gap-4 rounded-2xl bg-white p-6 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 sm:grid-cols-2">
+            <div>
+                <dt class="font-semibold text-slate-900">Original File</dt>
+                <dd class="mt-1 break-words">@Model.OriginalFileName</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-slate-900">Type</dt>
+                <dd class="mt-1">@Model.FileType (@Model.FileFormat)</dd>
+            </div>
+            <div>
+                <dt class="font-semibold text-slate-900">Size</dt>
+                <dd class="mt-1">@string.Format("{0:0.##} MB", sizeInMb)</dd>
+            </div>
+            @if (durationDisplay != null)
+            {
+                <div>
+                    <dt class="font-semibold text-slate-900">Duration</dt>
+                    <dd class="mt-1">@durationDisplay</dd>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Tags))
+            {
+                <div class="sm:col-span-2">
+                    <dt class="font-semibold text-slate-900">Tags</dt>
+                    <dd class="mt-1">@Model.Tags</dd>
+                </div>
+            }
+        </dl>
 
-    <dt class="col-sm-3">Type</dt>
-    <dd class="col-sm-9">@Model.FileType (@Model.FileFormat)</dd>
+        <div>
+            <a class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+               href="@Model.FilePath"
+               target="_blank"
+               rel="noopener noreferrer">
+                Open File
+            </a>
+        </div>
+    </section>
 
-    <dt class="col-sm-3">Size</dt>
-    <dd class="col-sm-9">@string.Format("{0:0.##} MB", sizeInMb)</dd>
-
-    <dt class="col-sm-3">Uploaded</dt>
-    <dd class="col-sm-9">@uploadedAt</dd>
-
-    @if (!string.IsNullOrWhiteSpace(Model.Tags))
-    {
-        <dt class="col-sm-3">Tags</dt>
-        <dd class="col-sm-9">@Model.Tags</dd>
-    }
-
-    @if (durationDisplay != null)
-    {
-        <dt class="col-sm-3">Duration</dt>
-        <dd class="col-sm-9">@durationDisplay</dd>
-    }
-</dl>
-
-@if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
-{
-    <img src="@Model.FilePath" style="max-width:100%;" alt="@Model.Title" />
-}
-else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
-{
-    <video controls style="max-width:100%;" poster="@Model.ThumbnailPath">
-        <source src="@Model.FilePath" type="video/mp4" />
-    </video>
-}
-else
-{
-    <a href="@Model.FilePath" target="_blank">Download/Open</a>
-}
+    <aside class="flex flex-1 items-start justify-center">
+        @if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
+        {
+            <img src="@Model.FilePath"
+                 alt="@Model.Title"
+                 class="max-h-[480px] w-full rounded-2xl object-contain shadow-lg" />
+        }
+        else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
+        {
+            <video controls poster="@Model.ThumbnailPath" class="max-h-[480px] w-full rounded-2xl shadow-lg">
+                <source src="@Model.FilePath" type="video/mp4" />
+            </video>
+        }
+        else
+        {
+            <div class="w-full rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500 shadow-sm">
+                Preview unavailable. Use the button above to open or download the file.
+            </div>
+        }
+    </aside>
+</div>

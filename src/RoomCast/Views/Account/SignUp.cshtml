@@ -1,60 +1,68 @@
-﻿@model RoomCast.Models.ViewModels.SignUpViewModel
+@model RoomCast.Models.ViewModels.SignUpViewModel
 @{
     ViewData["Title"] = "Sign Up";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title text-center mb-4">Create your account</h2>
-                <p class="text-muted text-center mb-4">
-                    Already registered? <a asp-controller="Account" asp-action="Login">Sign in here</a>.
-                </p>
+<div class="mx-auto max-w-xl rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+    <h2 class="text-center text-3xl font-semibold text-slate-900">Create your account</h2>
+    <p class="mt-2 text-center text-sm text-slate-500">
+        Already registered?
+        <a asp-controller="Account" asp-action="Login" class="font-semibold text-indigo-600 transition hover:text-indigo-500">Sign in here</a>.
+    </p>
 
-                <form asp-action="SignUp" method="post" novalidate>
-                    @Html.AntiForgeryToken()
+    <form asp-action="SignUp" method="post" novalidate class="mt-6 space-y-5">
+        @Html.AntiForgeryToken()
 
-                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+        <div asp-validation-summary="ModelOnly" class="validation-summary rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm" role="alert"></div>
 
-                    <div class="mb-3">
-                        <label asp-for="FirstName" class="form-label"></label>
-                        <input asp-for="FirstName" class="form-control" autocomplete="given-name" />
-                        <span asp-validation-for="FirstName" class="text-danger small"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="LastName" class="form-label"></label>
-                        <input asp-for="LastName" class="form-control" autocomplete="family-name" />
-                        <span asp-validation-for="LastName" class="text-danger small"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="Email" class="form-label"></label>
-                        <input asp-for="Email" class="form-control" autocomplete="email" />
-                        <span asp-validation-for="Email" class="text-danger small"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="Password" class="form-label"></label>
-                        <input asp-for="Password" class="form-control" autocomplete="new-password" />
-                        <div class="form-text">Use at least 8 characters, mixing letters and numbers.</div>
-                        <span asp-validation-for="Password" class="text-danger small"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="ConfirmPassword" class="form-label"></label>
-                        <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
-                        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Sign up</button>
-                    </div>
-                </form>
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="space-y-2">
+                <label asp-for="FirstName" class="text-sm font-semibold text-slate-700"></label>
+                <input asp-for="FirstName"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                       autocomplete="given-name" />
+                <span asp-validation-for="FirstName" class="text-sm text-red-600"></span>
+            </div>
+            <div class="space-y-2">
+                <label asp-for="LastName" class="text-sm font-semibold text-slate-700"></label>
+                <input asp-for="LastName"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                       autocomplete="family-name" />
+                <span asp-validation-for="LastName" class="text-sm text-red-600"></span>
             </div>
         </div>
-    </div>
+
+        <div class="space-y-2">
+            <label asp-for="Email" class="text-sm font-semibold text-slate-700"></label>
+            <input asp-for="Email"
+                   class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                   autocomplete="email" />
+            <span asp-validation-for="Email" class="text-sm text-red-600"></span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="space-y-2">
+                <label asp-for="Password" class="text-sm font-semibold text-slate-700"></label>
+                <input asp-for="Password"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                       autocomplete="new-password" />
+                <div class="text-xs text-slate-500">Use at least 8 characters, mixing letters and numbers.</div>
+                <span asp-validation-for="Password" class="text-sm text-red-600"></span>
+            </div>
+            <div class="space-y-2">
+                <label asp-for="ConfirmPassword" class="text-sm font-semibold text-slate-700"></label>
+                <input asp-for="ConfirmPassword"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                       autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-sm text-red-600"></span>
+            </div>
+        </div>
+
+        <button type="submit"
+                class="w-full rounded-md bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Sign up
+        </button>
+    </form>
 </div>
 
 @section Scripts {

@@ -57,7 +57,7 @@
         }
 
         previewContent.innerHTML = '';
-        previewContainer.classList.add('d-none');
+        previewContainer.classList.add('hidden');
     };
 
     const showPreview = (file, detectedType) => {
@@ -73,8 +73,9 @@
                 const image = document.createElement('img');
                 image.src = event.target?.result ?? '';
                 image.alt = 'Selected picture preview';
+                image.className = 'mx-auto max-h-80 rounded-xl object-contain shadow-sm';
                 previewContent.replaceChildren(image);
-                previewContainer.classList.remove('d-none');
+                previewContainer.classList.remove('hidden');
             };
             reader.readAsDataURL(file);
         } else if (detectedType === 'Video') {
@@ -83,8 +84,9 @@
             video.src = previewUrl;
             video.controls = true;
             video.preload = 'metadata';
+            video.className = 'mx-auto w-full max-h-80 rounded-xl shadow-sm';
             previewContent.replaceChildren(video);
-            previewContainer.classList.remove('d-none');
+            previewContainer.classList.remove('hidden');
         } else {
             const wrapper = document.createElement('div');
             wrapper.className = 'document-preview';
@@ -92,10 +94,10 @@
                 <span class="icon">📄</span>
                 <span>
                     ${file.name}
-                    <div class="text-muted small">Preview unavailable for documents</div>
+                    <div class="text-xs text-slate-500">Preview unavailable for documents</div>
                 </span>`;
             previewContent.replaceChildren(wrapper);
-            previewContainer.classList.remove('d-none');
+            previewContainer.classList.remove('hidden');
         }
     };
 

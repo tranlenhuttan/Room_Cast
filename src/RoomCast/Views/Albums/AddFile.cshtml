@@ -1,21 +1,30 @@
-﻿@{
+@{
     ViewData["Title"] = "Add File to Album";
 }
 
-<h2>Add File to Album</h2>
-
-<form asp-action="AddFile" method="post">
-    <input type="hidden" name="albumId" value="@ViewBag.AlbumId" />
-
-    <div class="form-group">
-        <label for="fileId">Select File</label>
-        <select name="fileId" class="form-control">
-            @foreach (var file in ViewBag.Files)
-            {
-                <option value="@file.FileId">@file.Title (@file.FileType)</option>
-            }
-        </select>
+<div class="max-w-xl space-y-6">
+    <div>
+        <h2 class="text-3xl font-semibold text-slate-900">Add File to Album</h2>
+        <p class="text-sm text-slate-500">Select a file from your library to include it in this album.</p>
     </div>
 
-    <button type="submit" class="btn btn-primary">Add</button>
-</form>
+    <form asp-action="AddFile" method="post" class="space-y-5">
+        <input type="hidden" name="albumId" value="@ViewBag.AlbumId" />
+
+        <div class="space-y-2">
+            <label for="fileId" class="text-sm font-semibold text-slate-700">Select File</label>
+            <select name="fileId"
+                    class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+                @foreach (var file in ViewBag.Files)
+                {
+                    <option value="@file.FileId">@file.Title (@file.FileType)</option>
+                }
+            </select>
+        </div>
+
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Add
+        </button>
+    </form>
+</div>
