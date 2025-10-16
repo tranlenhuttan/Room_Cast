@@ -1,0 +1,114 @@
+@model RoomCast.Models.MediaFile
+
+@{
+    Func<string?, string> iconForType = fileType =>
+    {
+        if (string.IsNullOrWhiteSpace(fileType))
+        {
+            return "bi-file-earmark";
+        }
+
+        return fileType.Trim().ToLowerInvariant() switch
+        {
+            "picture" or "image" => "bi-file-image",
+            "video" => "bi-file-earmark-play",
+            "audio" => "bi-file-music",
+            "document" or "pdf" or "text" => "bi-file-text",
+            "presentation" => "bi-file-earmark-slides",
+            "spreadsheet" => "bi-file-earmark-spreadsheet",
+            _ => "bi-file-earmark"
+        };
+    };
+
+    var uploadedAt = Model.CreatedAt.ToLocalTime().ToString("g");
+    var sizeInMb = Model.FileSize / (1024d * 1024d);
+    var duration = Model.DurationSeconds.HasValue
+        ? System.TimeSpan.FromSeconds(Model.DurationSeconds.Value)
+        : (System.TimeSpan?)null;
+    var durationLabel = duration.HasValue
+        ? (duration.Value.TotalHours >= 1
+            ? duration.Value.ToString(@"hh\:mm\:ss")
+            : duration.Value.ToString(@"mm\:ss"))
+        : null;
+    var iconClass = iconForType(Model.FileType);
+    var videoContentType = string.IsNullOrWhiteSpace(Model.ContentType)
+        ? "video/mp4"
+        : Model.ContentType;
+}
+
+<div class="card h-100 shadow-sm rounded-3">
+    <div class="card-header bg-transparent border-0 pb-0">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                <i class="bi @iconClass fs-5" styles="width: 20px;"></i>
+            </div>
+            <div class="flex-grow-1" style="min-width: 0;">
+                <h5 class="mb-0 text-truncate" title="@Model.Title">@Model.Title</h5>
+                <small class="text-muted text-uppercase">@Model.FileType</small>
+            </div>
+            <div class="dropdown ms-auto">
+                <button class="btn btn-link text-muted px-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-three-dots-vertical fs-5"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" href="@Model.FilePath" target="_blank">
+                            <i class="bi bi-box-arrow-up-right me-2"></i>
+                            Open
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                        <button type="button"
+                                class="dropdown-item text-danger d-flex align-items-center gap-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteFileModal"
+                                data-file-id="@Model.FileId"
+                                data-file-title="@Model.Title">
+                            <i class="bi bi-trash"></i>
+                            Delete
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-body d-flex flex-column px-2">
+        <div class="rounded-3 overflow-hidden bg-body-tertiary d-flex align-items-center justify-content-center" style="height: 180px;">
+            @if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
+            {
+                <img src="@Model.FilePath"
+                     alt="@Model.Title"
+                     class="w-100 h-100 object-fit-cover" />
+            }
+            else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrEmpty(Model.ThumbnailPath))
+                {
+                    <img src="@Model.ThumbnailPath"
+                         alt="@Model.Title"
+                         class="w-100 h-100 object-fit-cover" />
+                }
+                else
+                {
+                    <video class="w-100 h-100" controls preload="metadata">
+                        <source src="@Model.FilePath" type="@videoContentType" />
+                    </video>
+                }
+            }
+            else
+            {
+                <div class="text-center text-muted">
+                    <i class="bi @iconClass fs-1 d-block mb-2"></i>
+                    <span class="small">No preview available</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card-footer bg-transparent border-0 pt-0">
+        <small class="text-muted">Uploaded @uploadedAt</small>
+    </div>
+</div>

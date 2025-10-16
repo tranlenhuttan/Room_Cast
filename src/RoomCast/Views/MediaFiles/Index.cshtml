@@ -2,26 +2,6 @@
 @model IEnumerable<RoomCast.Models.MediaFile>
 @{
     ViewData["Title"] = "My Files";
-
-    Func<string?, string> iconForType = fileType =>
-    {
-        if (string.IsNullOrWhiteSpace(fileType))
-        {
-            return "bi-file-earmark";
-        }
-
-        return fileType.Trim().ToLowerInvariant() switch
-        {
-            "picture" or "image" => "bi-file-image",
-            "video" => "bi-file-earmark-play",
-            "audio" => "bi-file-music",
-            "document" or "pdf" or "text" => "bi-file-text",
-            "presentation" => "bi-file-earmark-slides",
-            "spreadsheet" => "bi-file-earmark-spreadsheet",
-            _ => "bi-file-earmark"
-        };
-    };
-
     var files = Model?.ToList() ?? new System.Collections.Generic.List<RoomCast.Models.MediaFile>();
 }
 
@@ -123,91 +103,9 @@ else
     <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-4">
         @foreach (var file in files)
         {
-            var uploadedAt = file.CreatedAt.ToLocalTime().ToString("g");
-            var sizeInMb = file.FileSize / (1024d * 1024d);
-            var duration = file.DurationSeconds.HasValue ? System.TimeSpan.FromSeconds(file.DurationSeconds.Value) : (System.TimeSpan?)null;
-            var durationLabel = duration.HasValue
-                ? (duration.Value.TotalHours >= 1
-                    ? duration.Value.ToString(@"hh\:mm\:ss")
-                    : duration.Value.ToString(@"mm\:ss"))
-                : null;
-            var iconClass = iconForType(file.FileType);
-
             <div class="col">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-img-top bg-body-tertiary d-flex align-items-center justify-content-center overflow-hidden" style="height: 180px;">
-                        @if (string.Equals(file.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(file.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            <img src="@file.FilePath"
-                                 alt="@file.Title"
-                                 class="w-100 h-100 object-fit-cover" />
-                        }
-                        else if (string.Equals(file.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (!string.IsNullOrEmpty(file.ThumbnailPath))
-                            {
-                                <img src="@file.ThumbnailPath"
-                                     alt="@file.Title"
-                                     class="w-100 h-100 object-fit-cover" />
-                            }
-                            else
-                            {
-                                <video class="w-100 h-100" controls preload="metadata">
-                                    <source src="@file.FilePath" type="video/mp4" />
-                                </video>
-                            }
-                        }
-                        else
-                        {
-                            <div class="text-center text-muted">
-                                <i class="bi @iconClass fs-1 d-block"></i>
-                                <span class="small">No preview available</span>
-                            </div>
-                        }
-                    </div>
-
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-start gap-3 mb-3">
-                            <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                                <i class="bi @iconClass fs-4"></i>
-                            </div>
-                            <div class="flex-grow-1" style="min-width: 0;">
-                                <h5 class="card-title mb-1 text-truncate" title="@file.Title">@file.Title</h5>
-                                <div class="text-muted small">@file.FileType</div>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="d-flex flex-wrap gap-2 small text-muted">
-                                <span class="badge bg-light text-dark">@string.Format("{0:0.##} MB", sizeInMb)</span>
-                                <span>Uploaded @uploadedAt</span>
-                                @if (!string.IsNullOrWhiteSpace(file.Tags))
-                                {
-                                    <span class="text-truncate">Tags: @file.Tags</span>
-                                }
-                                @if (durationLabel != null)
-                                {
-                                    <span>Duration: @durationLabel</span>
-                                }
-                            </div>
-                        </div>
-
-                        <div class="mt-auto d-grid gap-2">
-                            <a href="@file.FilePath" target="_blank" class="btn btn-outline-primary w-100">
-                                Open
-                            </a>
-                            <button type="button"
-                                    class="btn btn-outline-danger w-100"
-                                    data-bs-toggle="modal"
-                                    data-bs-target="#deleteFileModal"
-                                    data-file-id="@file.FileId"
-                                    data-file-title="@file.Title">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                @await Html.PartialAsync("_MediaFileCard", file)
+,             </div>
         }
     </div>
 }
