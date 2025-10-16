@@ -11,7 +11,6 @@ namespace RoomCast.Data
         {
         }
 
-        //public DbSet<FileUpload> FileUploads { get; set; }
         public DbSet<Album> Albums { get; set; }
         public DbSet<AlbumFile> AlbumFiles { get; set; }
         public DbSet<MediaFile> MediaFiles { get; set; }

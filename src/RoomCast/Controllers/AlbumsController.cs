@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoomCast.Data;
 using RoomCast.Models;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace RoomCast.Controllers
 {
