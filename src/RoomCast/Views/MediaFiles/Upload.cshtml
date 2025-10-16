@@ -1,4 +1,4 @@
-﻿@model RoomCast.Models.ViewModels.FileUploadViewModel
+@model RoomCast.Models.ViewModels.FileUploadViewModel
 @{
     ViewData["Title"] = "Upload File";
 }
@@ -7,48 +7,63 @@
     <link rel="stylesheet" href="~/css/media-upload.css" asp-append-version="true" />
 }
 
-<h2>Upload File</h2>
-
-<form asp-action="Upload" method="post" enctype="multipart/form-data">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
-    <div id="fileDropZone"
-         class="upload-dropzone"
-         data-allowed-extensions="@System.Text.Json.JsonSerializer.Serialize(Model.AllowedExtensionsByType)">
-        <span class="icon">⬆️</span>
-        <strong>Drag &amp; drop</strong> a picture, video, or document here<br />
-    <small class="text-muted">…or click to browse your files</small>
-    <input asp-for="File" id="fileInput" type="file" class="d-none" accept="@string.Join(",", Model.AllowedExtensions)" />
-    </div>
-    <span asp-validation-for="File" class="text-danger"></span>
-
-    <div id="previewContainer" class="upload-preview d-none">
-        <div class="preview-label">Selected File Preview</div>
-        <div id="previewContent"></div>
+<div class="max-w-3xl space-y-6">
+    <div>
+        <h2 class="text-3xl font-semibold text-slate-900">Upload File</h2>
+        <p class="mt-2 text-sm text-slate-500">Drag a file into the dropzone or pick one from your device to get started.</p>
     </div>
 
-    <div class="upload-file-info">
-        <div class="form-group">
-            <label asp-for="Title"></label>
-            <input asp-for="Title" class="form-control" placeholder="auto-filled from the selected file" />
-            <span asp-validation-for="Title" class="text-danger"></span>
+    <form asp-action="Upload" method="post" enctype="multipart/form-data" class="space-y-6">
+        <div asp-validation-summary="ModelOnly" class="validation-summary rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm" role="alert"></div>
+
+        <div id="fileDropZone"
+             class="upload-dropzone"
+             data-allowed-extensions="@System.Text.Json.JsonSerializer.Serialize(Model.AllowedExtensionsByType)">
+            <span class="icon">⬆️</span>
+            <strong>Drag &amp; drop</strong> a picture, video, or document here<br />
+            <small class="text-slate-500">…or click to browse your files</small>
+            <input asp-for="File" id="fileInput" type="file" class="hidden" accept="@string.Join(",", Model.AllowedExtensions)" />
+        </div>
+        <span asp-validation-for="File" class="mt-1 block text-sm text-red-600"></span>
+
+        <div id="previewContainer" class="upload-preview hidden">
+            <div class="preview-label">Selected File Preview</div>
+            <div id="previewContent"></div>
         </div>
 
-        <div class="form-group">
-            <label>Detected Type</label>
-            <input type="text" id="detectedType" class="form-control" readonly placeholder="Select a file to detect type" />
+        <div class="upload-file-info grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div class="space-y-2">
+                <label asp-for="Title" class="text-sm font-semibold text-slate-700"></label>
+                <input asp-for="Title"
+                       class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                       placeholder="auto-filled from the selected file" />
+                <span asp-validation-for="Title" class="text-sm text-red-600"></span>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-slate-700">Detected Type</label>
+                <input type="text"
+                       id="detectedType"
+                       class="w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500"
+                       readonly
+                       placeholder="Select a file to detect type" />
+            </div>
         </div>
-    </div>
 
-    <div class="form-group">
-        <label asp-for="Tags"></label>
-        <input asp-for="Tags" class="form-control" />
-        <small class="form-text text-muted">Optional: separate multiple tags with commas.</small>
-        <span asp-validation-for="Tags" class="text-danger"></span>
-    </div>
+        <div class="space-y-2">
+            <label asp-for="Tags" class="text-sm font-semibold text-slate-700"></label>
+            <input asp-for="Tags"
+                   class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" />
+            <small class="text-sm text-slate-500">Optional: separate multiple tags with commas.</small>
+            <span asp-validation-for="Tags" class="text-sm text-red-600"></span>
+        </div>
 
-    <button type="submit" class="btn btn-primary">Upload</button>
-</form>
+        <button type="submit"
+                class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Upload
+        </button>
+    </form>
+</div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}

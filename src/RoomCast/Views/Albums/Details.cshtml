@@ -1,56 +1,80 @@
-﻿@model RoomCast.Models.Album
+@model RoomCast.Models.Album
 @{
     ViewData["Title"] = "Album Playback";
+    var createdAt = Model.Timestamp.ToLocalTime().ToString("f");
 }
 
-<h2>@Model.AlbumName</h2>
-<p>Created: @Model.Timestamp</p>
+<div class="space-y-6">
+    <div>
+        <h2 class="text-3xl font-semibold text-slate-900">@Model.AlbumName</h2>
+        <p class="text-sm text-slate-500">Created @createdAt</p>
+    </div>
 
-<div id="slideshow-container">
-    @for (int i = 0; i < Model.AlbumFiles.Count; i++)
-    {
-        var item = Model.AlbumFiles.ElementAt(i).MediaFile;
+    <div id="slideshow-container" class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        @for (int i = 0; i < Model.AlbumFiles.Count; i++)
+        {
+            var item = Model.AlbumFiles.ElementAt(i).MediaFile;
+            <div class="slide flex items-center justify-center @(i == 0 ? string.Empty : "hidden")">
+                @if (string.Equals(item.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(item.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    <img src="@item.FilePath" class="max-h-[480px] w-full object-contain" alt="@item.Title" />
+                }
+                else if (string.Equals(item.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    <video controls poster="@item.ThumbnailPath" class="max-h-[480px] w-full rounded-xl shadow">
+                        <source src="@item.FilePath" type="video/mp4" />
+                    </video>
+                }
+                else
+                {
+                    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600">
+                        <a href="@item.FilePath" target="_blank" rel="noopener noreferrer" class="font-semibold text-indigo-600 transition hover:text-indigo-500">@item.Title</a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 
-        <div class="slide" style="display:@(i == 0 ? "block" : "none")">
-            @if (string.Equals(item.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) || string.Equals(item.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
-            {
-                <img src="@item.FilePath" style="max-width:100%; height:auto;" />
-            }
-            else if (string.Equals(item.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
-            {
-                <video controls style="max-width:100%;" poster="@item.ThumbnailPath">
-                    <source src="@item.FilePath" type="video/mp4" />
-                </video>
-            }
-            else
-            {
-                <p><a href="@item.FilePath" target="_blank">@item.Title</a></p>
-            }
-        </div>
-    }
-</div>
-
-<div class="controls mt-3">
-    <button onclick="prevSlide()" class="btn btn-secondary">Previous</button>
-    <button onclick="nextSlide()" class="btn btn-secondary">Next</button>
-    <button onclick="toggleSlideshow()" class="btn btn-primary" id="playPauseBtn">Start Slideshow</button>
+    <div class="flex flex-wrap gap-3">
+        <button type="button"
+                onclick="prevSlide()"
+                class="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-900">
+            Previous
+        </button>
+        <button type="button"
+                onclick="nextSlide()"
+                class="inline-flex items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-900">
+            Next
+        </button>
+        <button type="button"
+                onclick="toggleSlideshow()"
+                id="playPauseBtn"
+                class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+            Start Slideshow
+        </button>
+    </div>
 </div>
 
 <script>
     let slideIndex = 0;
-    let slides = document.getElementsByClassName("slide");
+    const slides = Array.from(document.getElementsByClassName('slide'));
     let playing = false;
     let timer;
 
-    function showSlide(index) {
+    const showSlide = (index) => {
+        if (!slides.length) {
+            return;
+        }
+
         if (index >= slides.length) slideIndex = 0;
         if (index < 0) slideIndex = slides.length - 1;
 
-        for (let i = 0; i < slides.length; i++) {
-            slides[i].style.display = "none";
-        }
-        slides[slideIndex].style.display = "block";
-    }
+        slides.forEach(slide => {
+            slide.classList.add('hidden');
+        });
+
+        slides[slideIndex].classList.remove('hidden');
+    };
 
     function nextSlide() {
         slideIndex++;
@@ -63,17 +87,17 @@
     }
 
     function toggleSlideshow() {
+        const button = document.getElementById('playPauseBtn');
         if (!playing) {
             playing = true;
-            document.getElementById("playPauseBtn").innerText = "Pause Slideshow";
-            timer = setInterval(nextSlide, 5000); // 5 seconds per slide
+            button.textContent = 'Pause Slideshow';
+            timer = setInterval(nextSlide, 5000);
         } else {
             playing = false;
-            document.getElementById("playPauseBtn").innerText = "Start Slideshow";
+            button.textContent = 'Start Slideshow';
             clearInterval(timer);
         }
     }
 
-    // Initialize first slide
     showSlide(slideIndex);
 </script>

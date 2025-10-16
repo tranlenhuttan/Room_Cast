@@ -1,28 +1,39 @@
-﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
 @using RoomCast.Models
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
-<ul class="navbar-nav">
+<ul class="flex items-center gap-4 text-sm font-semibold text-slate-100">
     @if (SignInManager.IsSignedIn(User))
     {
-        <li class="nav-item">
-            <span class="nav-link">Hello @User.Identity?.Name!</span>
+        <li class="text-slate-300">
+            Hello @User.Identity?.Name!
         </li>
-        <li class="nav-item">
-            <form asp-controller="Account" asp-action="Logout" method="post" class="form-inline">
+        <li>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="inline">
                 @Html.AntiForgeryToken()
-                <button type="submit" class="nav-link btn btn-link">Logout</button>
+                <button type="submit"
+                        class="rounded-full border border-white/30 px-3 py-1 text-slate-100 transition hover:border-white hover:bg-white/10">
+                    Logout
+                </button>
             </form>
         </li>
     }
     else
     {
-        <li class="nav-item">
-            <a class="nav-link" asp-controller="Account" asp-action="Login">Login</a>
+        <li>
+            <a class="rounded-full border border-white/40 px-3 py-1 text-slate-100 transition hover:border-white hover:bg-white/10"
+               asp-controller="Account"
+               asp-action="Login">
+                Login
+            </a>
         </li>
-        <li class="nav-item">
-            <a class="nav-link" asp-controller="Account" asp-action="SignUp">Sign Up</a>
+        <li>
+            <a class="rounded-full bg-white px-3 py-1 text-slate-900 transition hover:bg-slate-100"
+               asp-controller="Account"
+               asp-action="SignUp">
+                Sign Up
+            </a>
         </li>
     }
 </ul>

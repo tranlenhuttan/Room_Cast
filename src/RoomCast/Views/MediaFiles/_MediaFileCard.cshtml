@@ -1,0 +1,114 @@
+@model RoomCast.Models.MediaFile
+
+@{
+    Func<string?, string> iconForType = fileType =>
+    {
+        if (string.IsNullOrWhiteSpace(fileType))
+        {
+            return "bi-file-earmark";
+        }
+
+        return fileType.Trim().ToLowerInvariant() switch
+        {
+            "picture" or "image" => "bi-file-image",
+            "video" => "bi-file-earmark-play",
+            "audio" => "bi-file-music",
+            "document" or "pdf" or "text" => "bi-file-text",
+            "presentation" => "bi-file-earmark-slides",
+            "spreadsheet" => "bi-file-earmark-spreadsheet",
+            _ => "bi-file-earmark"
+        };
+    };
+
+    var uploadedAt = Model.CreatedAt.ToLocalTime().ToString("g");
+    var sizeInMb = Model.FileSize / (1024d * 1024d);
+    var duration = Model.DurationSeconds.HasValue
+        ? System.TimeSpan.FromSeconds(Model.DurationSeconds.Value)
+        : (System.TimeSpan?)null;
+    var durationLabel = duration.HasValue
+        ? (duration.Value.TotalHours >= 1
+            ? duration.Value.ToString(@"hh\:mm\:ss")
+            : duration.Value.ToString(@"mm\:ss"))
+        : null;
+    var iconClass = iconForType(Model.FileType);
+    var videoContentType = string.IsNullOrWhiteSpace(Model.ContentType)
+        ? "video/mp4"
+        : Model.ContentType;
+}
+
+<div class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg">
+    <div class="px-5 pt-5">
+        <div class="flex items-start gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                <i class="bi @iconClass text-xl"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h5 class="truncate text-base font-semibold text-slate-900" title="@Model.Title">@Model.Title</h5>
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-400">@Model.FileType</p>
+            </div>
+            @if (durationLabel != null || sizeInMb > 0)
+            {
+                <div class="flex shrink-0 flex-col items-end gap-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                    @if (durationLabel != null)
+                    {
+                        <span>@durationLabel</span>
+                    }
+                    <span>@string.Format("{0:0.##} MB", sizeInMb)</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="mt-4 flex flex-1 flex-col px-5">
+        <div class="flex h-48 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50">
+            @if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
+            {
+                <img src="@Model.FilePath"
+                     alt="@Model.Title"
+                     class="h-full w-full object-cover" />
+            }
+            else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
+            {
+                if (!string.IsNullOrEmpty(Model.ThumbnailPath))
+                {
+                    <img src="@Model.ThumbnailPath"
+                         alt="@Model.Title"
+                         class="h-full w-full object-cover" />
+                }
+                else
+                {
+                    <video class="h-full w-full rounded-xl" controls preload="metadata">
+                        <source src="@Model.FilePath" type="@videoContentType" />
+                    </video>
+                }
+            }
+            else
+            {
+                <div class="flex flex-col items-center gap-2 text-center text-slate-500">
+                    <i class="bi @iconClass text-3xl"></i>
+                    <span class="text-sm">No preview available</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 px-5 pb-5 pt-4">
+        <small class="text-xs text-slate-500">Uploaded @uploadedAt</small>
+        <div class="flex items-center gap-2">
+            <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
+               href="@Model.FilePath"
+               target="_blank"
+               rel="noopener noreferrer">
+                Open
+            </a>
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                    data-delete-trigger
+                    data-file-id="@Model.FileId"
+                    data-file-title="@Model.Title">
+                Delete
+            </button>
+        </div>
+    </div>
+</div>
