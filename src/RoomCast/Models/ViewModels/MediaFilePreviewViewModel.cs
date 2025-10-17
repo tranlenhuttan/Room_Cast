@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace RoomCast.Models.ViewModels
 {
     public enum DocumentPreviewMode
@@ -32,6 +35,14 @@ namespace RoomCast.Models.ViewModels
         public DocumentPreviewMode DocumentPreviewMode { get; set; } = DocumentPreviewMode.None;
 
         public string? DocumentEmbedUrl { get; set; }
+
+        public string OriginalFileName { get; init; } = string.Empty;
+
+        public DateTime CreatedAt { get; init; }
+
+        public string UploadedAtLabel { get; init; } = string.Empty;
+
+        public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
 
         public bool SupportsPreview =>
             string.Equals(FileType, "Picture", StringComparison.OrdinalIgnoreCase) ||

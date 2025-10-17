@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Globalization;
 using RoomCast.Models;
 using RoomCast.Models.ViewModels;
 
@@ -29,7 +33,11 @@ namespace RoomCast.Services.MediaPreview
                 FileSize = mediaFile.FileSize,
                 FileSizeLabel = FormatFileSize(mediaFile.FileSize),
                 DocumentPreviewMode = DocumentPreviewMode.None,
-                DocumentEmbedUrl = null
+                DocumentEmbedUrl = null,
+                OriginalFileName = mediaFile.OriginalFileName,
+                CreatedAt = mediaFile.CreatedAt,
+                UploadedAtLabel = mediaFile.CreatedAt.ToLocalTime().ToString("f", CultureInfo.CurrentCulture),
+                Tags = ParseTags(mediaFile.Tags)
             };
 
             if (string.Equals(mediaFile.FileType, "Document", StringComparison.OrdinalIgnoreCase))
@@ -120,6 +128,21 @@ namespace RoomCast.Services.MediaPreview
                 ".mkv" => "video/x-matroska",
                 _ => "application/octet-stream"
             };
+        }
+
+        private static IReadOnlyList<string> ParseTags(string tags)
+        {
+            if (string.IsNullOrWhiteSpace(tags))
+            {
+                return Array.Empty<string>();
+            }
+
+            return tags
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Select(t => t.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
     }
 }
