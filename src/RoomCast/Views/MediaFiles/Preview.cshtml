@@ -1,0 +1,158 @@
+@model RoomCast.Models.ViewModels.MediaFilePreviewViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = $"{Model.Title} preview";
+    ViewData["IsFullWidthLayout"] = true;
+    ViewData["HideLayoutFooter"] = true;
+
+    string IconForType(string? fileType)
+    {
+        if (string.IsNullOrWhiteSpace(fileType))
+        {
+            return "bi-file-earmark";
+        }
+
+        return fileType.Trim().ToLowerInvariant() switch
+        {
+            "picture" or "image" => "bi-file-image",
+            "video" => "bi-file-earmark-play",
+            "audio" => "bi-file-music",
+            "document" or "pdf" or "text" => "bi-file-text",
+            "presentation" => "bi-file-earmark-slides",
+            "spreadsheet" => "bi-file-earmark-spreadsheet",
+            _ => "bi-file-earmark"
+        };
+    }
+
+    var iconClass = IconForType(Model.FileType);
+    string? durationLabel = null;
+
+    if (Model.DurationSeconds is double seconds and > 0)
+    {
+        var duration = TimeSpan.FromSeconds(seconds);
+        durationLabel = duration.TotalHours >= 1
+            ? duration.ToString(@"hh\:mm\:ss")
+            : duration.ToString(@"mm\:ss");
+    }
+
+    var infoItems = new List<(string Label, string? Value)>
+    {
+        ("Original name", string.IsNullOrWhiteSpace(Model.OriginalFileName) ? null : Model.OriginalFileName),
+        ("Type", Model.FileType),
+        ("Format", Model.FileFormat),
+        ("Content type", string.IsNullOrWhiteSpace(Model.ContentType) ? null : Model.ContentType),
+        ("File size", Model.FileSizeLabel),
+        ("Uploaded", Model.UploadedAtLabel),
+        ("Duration", durationLabel)
+    }.Where(item => !string.IsNullOrWhiteSpace(item.Value)).ToList();
+}
+
+<form id="renameForm"
+      asp-controller="MediaFiles"
+      asp-action="Rename"
+      asp-route-id="@Model.FileId"
+      method="post"
+      class="hidden">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="flex flex-1 flex-col gap-4 bg-white px-4 pb-8 pt-6 sm:px-8 lg:px-12">
+    <div class="flex flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur-sm sm:px-6 lg:px-8">
+            <div class="flex flex-wrap items-center gap-2">
+                <a class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                   asp-controller="MediaFiles"
+                   asp-action="Details"
+                   asp-route-id="@Model.FileId">
+                    <i class="bi bi-pencil-square text-base"></i>
+                    Edit
+                </a>
+                <a class="inline-flex items-center gap-2 rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+                   href="@Model.FilePath"
+                   download>
+                    <i class="bi bi-download text-base"></i>
+                    Download
+                </a>
+            </div>
+            <div class="flex min-w-0 flex-1 items-center justify-center">
+                <div class="group flex min-w-0 items-center gap-3 rounded-xl border border-transparent bg-slate-100 px-4 py-2 text-sm text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50"
+                     data-file-name-display
+                     title="Double-click to rename">
+                    <i class="bi @iconClass text-lg text-indigo-500"></i>
+                    <span class="max-w-xl truncate font-semibold text-slate-900" data-file-name-text>@Model.Title</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                        data-info-toggle
+                        aria-expanded="false"
+                        aria-controls="media-info-panel">
+                    <i class="bi bi-info-circle text-base"></i>
+                    Info
+                </button>
+            </div>
+        </div>
+
+        <div class="px-4 pt-3 sm:px-6 lg:px-8">
+            <div class="hidden rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700" data-feedback role="alert"></div>
+        </div>
+
+        <div class="flex flex-1 flex-col-reverse lg:flex-row">
+            <div class="flex-1 bg-white px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+                <div class="relative h-full min-h-[60vh] w-full overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                    @await Html.PartialAsync("_MediaViewerSurface", Model)
+                </div>
+            </div>
+            <aside id="media-info-panel"
+                   class="flex w-full flex-col border-b border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-700 transition-all lg:w-80 lg:min-h-[60vh] lg:border-b-0 lg:border-l"
+                   data-info-panel
+                   hidden>
+                <div class="flex items-center justify-between pb-4">
+                    <h3 class="text-base font-semibold text-slate-900">File details</h3>
+                    <button type="button"
+                            class="rounded-md border border-slate-200 bg-white p-1 text-slate-500 transition hover:border-red-400 hover:bg-red-50 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400"
+                            data-info-close
+                            aria-label="Close info panel">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <dl class="space-y-3">
+                    @foreach (var item in infoItems)
+                    {
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">@item.Label</dt>
+                            <dd class="mt-1 text-sm text-slate-800">@item.Value</dd>
+                        </div>
+                    }
+
+                    @if (Model.Tags.Count > 0)
+                    {
+                        <div>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Tags</dt>
+                            <dd class="mt-1 flex flex-wrap gap-2">
+                                @foreach (var tag in Model.Tags)
+                                {
+                                    <span class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                                        @tag
+                                    </span>
+                                }
+                            </dd>
+                        </div>
+                    }
+                </dl>
+
+                <div class="mt-6 space-y-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
+                    <p>Previewing from <span class="text-slate-700">@Model.FilePath</span></p>
+                    <p>Content type <span class="text-slate-700">@Model.ContentType</span></p>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/media-viewer.js" asp-append-version="true"></script>
+}

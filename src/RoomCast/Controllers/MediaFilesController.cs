@@ -6,6 +6,7 @@ using RoomCast.Data;
 using RoomCast.Models;
 using RoomCast.Models.ViewModels;
 using RoomCast.Services.MediaPreview;
+using Microsoft.AspNetCore.Http;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -199,7 +200,58 @@ namespace RoomCast.Controllers
 
             var viewModel = _previewBuilder.Build(mediaFile);
 
-            return PartialView("_MediaPreviewOverlay", viewModel);
+            return View("Preview", viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Rename(int id, [FromForm] string title)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            var trimmedTitle = (title ?? string.Empty).Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedTitle))
+            {
+                return BadRequest(new { error = "Title is required." });
+            }
+
+            if (trimmedTitle.Length > 200)
+            {
+                return BadRequest(new { error = "Title must be 200 characters or fewer." });
+            }
+
+            if (string.Equals(mediaFile.Title, trimmedTitle, StringComparison.Ordinal))
+            {
+                return Ok(new { title = mediaFile.Title });
+            }
+
+            mediaFile.Title = trimmedTitle;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Failed to rename media file {FileId} for user {UserId}", id, user.Id);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { error = "We could not rename the file right now. Please try again later." });
+            }
+
+            return Ok(new { title = mediaFile.Title });
         }
 
         [HttpPost]
