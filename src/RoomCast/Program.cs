@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using RoomCast.Data;
 using RoomCast.Models;
 using RoomCast.Options;
+using RoomCast.Services.MediaPreview;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,7 @@ builder.Services.Configure<AuthenticationOptions>(
 // Add MVC + Razor Pages
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services.AddScoped<IMediaFilePreviewBuilder, MediaFilePreviewBuilder>();
 
 var app = builder.Build();
 

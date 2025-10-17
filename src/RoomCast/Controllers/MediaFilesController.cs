@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using RoomCast.Data;
 using RoomCast.Models;
 using RoomCast.Models.ViewModels;
+using RoomCast.Services.MediaPreview;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -28,13 +29,20 @@ namespace RoomCast.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<MediaFilesController> _logger;
+        private readonly IMediaFilePreviewBuilder _previewBuilder;
 
-        public MediaFilesController(ApplicationDbContext context, IWebHostEnvironment environment, UserManager<ApplicationUser> userManager, ILogger<MediaFilesController> logger)
+        public MediaFilesController(
+            ApplicationDbContext context,
+            IWebHostEnvironment environment,
+            UserManager<ApplicationUser> userManager,
+            ILogger<MediaFilesController> logger,
+            IMediaFilePreviewBuilder previewBuilder)
         {
             _context = context;
             _environment = environment;
             _userManager = userManager;
             _logger = logger;
+            _previewBuilder = previewBuilder;
         }
 
         // GET: List Files
@@ -169,6 +177,29 @@ namespace RoomCast.Controllers
             }
 
             return View(file);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Preview(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            var viewModel = _previewBuilder.Build(mediaFile);
+
+            return PartialView("_MediaPreviewOverlay", viewModel);
         }
 
         [HttpPost]

@@ -43,6 +43,7 @@
 
 @section Scripts
 {
+    <script src="~/js/media-preview.js" asp-append-version="true"></script>
     <script>
         (() => {
             const modal = document.getElementById('deleteFileModal');
@@ -146,3 +147,5 @@ else
         }
     </div>
 }
+
+<div data-preview-root class="hidden"></div>

@@ -1,0 +1,74 @@
+@model RoomCast.Models.ViewModels.MediaFilePreviewViewModel
+@{
+    var isDocument = string.Equals(Model.FileType, "Document", StringComparison.OrdinalIgnoreCase);
+    var isImage = string.Equals(Model.FileType, "Picture", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Model.FileType, "Image", StringComparison.OrdinalIgnoreCase);
+    var isVideo = string.Equals(Model.FileType, "Video", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="media-preview-surface" data-preview-kind="@Model.FileType">
+    <div class="media-preview-surface__content">
+        @if (isDocument)
+        {
+            var embedUrl = Model.DocumentEmbedUrl ?? Model.FilePath;
+            switch (Model.DocumentPreviewMode)
+            {
+                case RoomCast.Models.ViewModels.DocumentPreviewMode.Pdf:
+                    <iframe src="@($"{embedUrl}#toolbar=0")"
+                            title="@Model.Title"
+                            class="media-preview-surface__frame"
+                            loading="lazy"></iframe>
+                    break;
+                case RoomCast.Models.ViewModels.DocumentPreviewMode.PlainText:
+                    <iframe src="@embedUrl"
+                            title="@Model.Title"
+                            class="media-preview-surface__frame media-preview-surface__frame--text"
+                            loading="lazy"></iframe>
+                    break;
+                default:
+                    <div class="media-preview-surface__message">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <p>This document format is not previewable yet.</p>
+                        <a class="media-preview-surface__link"
+                           href="@Model.FilePath"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            Download file
+                        </a>
+                    </div>
+                    break;
+            }
+        }
+        else if (isImage)
+        {
+            <div class="media-preview-surface__image-wrapper">
+                <img src="@Model.FilePath"
+                     alt="@Model.Title"
+                     class="media-preview-surface__image" />
+            </div>
+        }
+        else if (isVideo)
+        {
+            <video class="media-preview-surface__video"
+                   controls
+                   preload="metadata"
+                   poster="@Model.ThumbnailPath">
+                <source src="@Model.FilePath" type="@Model.ContentType" />
+                Your browser does not support the video tag.
+            </video>
+        }
+        else
+        {
+            <div class="media-preview-surface__message">
+                <i class="bi bi-eye-slash"></i>
+                <p>No preview available for this file type.</p>
+                <a class="media-preview-surface__link"
+                   href="@Model.FilePath"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    Open in new tab
+                </a>
+            </div>
+        }
+    </div>
+</div>
