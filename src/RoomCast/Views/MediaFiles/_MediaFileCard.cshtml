@@ -34,9 +34,19 @@
     var videoContentType = string.IsNullOrWhiteSpace(Model.ContentType)
         ? "video/mp4"
         : Model.ContentType;
+    var normalizedType = string.IsNullOrWhiteSpace(Model.FileType)
+        ? string.Empty
+        : Model.FileType.Trim().ToLowerInvariant();
+    var isImage = normalizedType is "picture" or "image";
+    var isVideo = normalizedType is "video";
 }
 
-<div class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg">
+<div class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg"
+     data-media-card
+     data-media-id="@Model.FileId"
+     data-media-type="@normalizedType"
+     data-media-title="@Model.Title"
+     data-media-src="@(isImage ? Model.FilePath : null)">
     <div class="px-5 pt-5">
         <div class="flex items-start gap-3">
             <div class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
@@ -61,14 +71,13 @@
 
     <div class="mt-4 flex flex-1 flex-col px-5">
         <div class="flex h-48 w-full items-center justify-center overflow-hidden rounded-xl bg-slate-50">
-            @if (string.Equals(Model.FileType, "Picture", System.StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(Model.FileType, "Image", System.StringComparison.OrdinalIgnoreCase))
+            @if (isImage)
             {
                 <img src="@Model.FilePath"
                      alt="@Model.Title"
                      class="h-full w-full object-cover" />
             }
-            else if (string.Equals(Model.FileType, "Video", System.StringComparison.OrdinalIgnoreCase))
+            else if (isVideo)
             {
                 if (!string.IsNullOrEmpty(Model.ThumbnailPath))
                 {
