@@ -54,25 +54,62 @@
     resetFeedbackClasses();
   };
 
-  const toggleInfoPanel = (show) => {
-    if (!infoPanel || !infoToggle) {
-      return;
-    }
-    const shouldShow = typeof show === 'boolean'
-      ? show
-      : infoPanel.hasAttribute('hidden');
+  console.log(infoToggle, infoPanel);
 
-    if (shouldShow) {
+  if (infoToggle && infoPanel) {
+    const isInfoPanelOpen = () => !infoPanel.hasAttribute('hidden');
+
+    const showInfoPanel = () => {
       infoPanel.removeAttribute('hidden');
-    } else {
+      infoToggle.setAttribute('aria-expanded', 'true');
+      infoPanel.setAttribute('data-open', 'true');
+    };
+
+    const hideInfoPanel = ({ returnFocus } = { returnFocus: false }) => {
+      if (!isInfoPanelOpen()) {
+        return;
+      }
+
       infoPanel.setAttribute('hidden', 'hidden');
-    }
+      infoPanel.removeAttribute('data-open');
+      infoToggle.setAttribute('aria-expanded', 'false');
 
-    infoToggle.setAttribute('aria-expanded', shouldShow.toString());
-  };
+      if (returnFocus && typeof infoToggle.focus === 'function') {
+        infoToggle.focus();
+      }
+    };
 
-  infoToggle?.addEventListener('click', () => toggleInfoPanel());
-  infoClose?.addEventListener('click', () => toggleInfoPanel(false));
+    infoToggle.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isInfoPanelOpen()) {
+        hideInfoPanel();
+      } else {
+        showInfoPanel();
+      }
+    });
+
+    infoClose?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      hideInfoPanel({ returnFocus: true });
+    });
+
+    infoPanel.addEventListener('click', (event) => {
+      event.stopPropagation();
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && isInfoPanelOpen()) {
+        event.preventDefault();
+        hideInfoPanel({ returnFocus: true });
+      }
+    });
+
+    document.addEventListener('click', () => {
+      hideInfoPanel();
+    });
+  }
 
   let isEditing = false;
   let isSaving = false;
