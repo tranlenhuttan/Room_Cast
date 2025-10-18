@@ -22,6 +22,7 @@
     var containerClass = isFullWidthLayout
         ? "flex w-full flex-1 flex-col"
         : "mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8";
+    var mainContentClass = ViewData["MainContentClass"] as string ?? (isFullWidthLayout ? "flex flex-1 flex-col" : string.Empty);
 }
 <body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
     <header class="bg-slate-900 text-white shadow-sm">
@@ -96,7 +97,7 @@
     </header>
 
     <div class="@containerClass">
-        <main role="main" class="flex flex-1">
+        <main role="main" class="@(string.IsNullOrWhiteSpace(mainContentClass) ? null : mainContentClass)">
             @RenderBody()
         </main>
     </div>
