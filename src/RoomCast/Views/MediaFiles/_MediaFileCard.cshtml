@@ -1,3 +1,4 @@
+@using System.Globalization
 @model RoomCast.Models.MediaFile
 
 @{
@@ -46,7 +47,11 @@
      data-media-id="@Model.FileId"
      data-media-type="@normalizedType"
      data-media-title="@Model.Title"
-     data-media-src="@(isImage ? Model.FilePath : null)">
+     data-media-src="@(isImage || isVideo ? Model.FilePath : null)"
+     data-media-content-type="@(isVideo ? videoContentType : null)"
+     data-media-duration="@(Model.DurationSeconds?.ToString(CultureInfo.InvariantCulture))"
+     data-media-size="@(Model.FileSize > 0 ? Model.FileSize.ToString(CultureInfo.InvariantCulture) : null)"
+     data-media-poster="@(isVideo && !string.IsNullOrWhiteSpace(Model.ThumbnailPath) ? Model.ThumbnailPath : null)">
     <div class="px-5 pt-5">
         <div class="flex items-start gap-3">
             <div class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
