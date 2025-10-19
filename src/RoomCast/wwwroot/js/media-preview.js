@@ -15,7 +15,7 @@
   const state = {
     imageViewer: null,
     imageCardIndexMap: new Map(),
-    videoModal: null,
+    mediaModal: null,
     activeAbortController: null,
     revokeObjectUrl: null,
     lastFocusedElement: null
@@ -24,7 +24,7 @@
   const handleKeydown = (event) => {
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeVideoModal();
+      closeMediaModal();
     }
   };
 
@@ -40,6 +40,7 @@
   }
 
   setupVideoPreview();
+  setupDocumentPreview();
 
   function setupImagePreview() {
     const imageCards = mediaCards.filter((card) => {
@@ -144,9 +145,66 @@
     });
   }
 
-  function ensureVideoModal() {
-    if (state.videoModal) {
-      return state.videoModal;
+  function setupDocumentPreview() {
+    const documentCards = mediaCards.filter((card) => {
+      const type = (card.getAttribute('data-media-type') ?? '').trim().toLowerCase();
+      return type === 'document';
+    });
+
+    if (documentCards.length === 0) {
+      return;
+    }
+
+    documentCards.forEach((card) => {
+      card.addEventListener('dblclick', (event) => {
+        if (isInteractiveChild(event.target)) {
+          return;
+        }
+
+        event.preventDefault();
+        openDocumentPreview(card);
+      });
+    });
+  }
+
+  function applyStatus(modal, message, variant = 'info') {
+    if (!modal || !modal.status || !modal.statusIcon || !modal.statusText) {
+      return;
+    }
+
+    const { status, statusIcon, statusText } = modal;
+
+    if (!message) {
+      status.classList.add('hidden');
+      status.dataset.state = '';
+      statusText.textContent = '';
+      statusIcon.className = 'bi';
+      return;
+    }
+
+    status.classList.remove('hidden');
+    status.dataset.state = variant;
+    statusText.textContent = message;
+
+    status.classList.remove('text-slate-200', 'text-red-200', 'text-emerald-200');
+    let icon = 'bi-hourglass-split';
+
+    if (variant === 'error') {
+      status.classList.add('text-red-200');
+      icon = 'bi-exclamation-octagon';
+    } else if (variant === 'success') {
+      status.classList.add('text-emerald-200');
+      icon = 'bi-check-circle';
+    } else {
+      status.classList.add('text-slate-200');
+    }
+
+    statusIcon.className = `bi ${icon}`;
+  }
+
+  function ensureMediaModal() {
+    if (state.mediaModal) {
+      return state.mediaModal;
     }
 
     const backdrop = document.createElement('div');
@@ -157,7 +215,7 @@
     dialog.className = 'media-preview-dialog';
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
-    dialog.setAttribute('aria-label', 'Video preview');
+    dialog.setAttribute('aria-label', 'Media preview');
     dialog.setAttribute('tabindex', '-1');
 
     const toolbar = document.createElement('div');
@@ -171,7 +229,7 @@
 
     const titleHeading = document.createElement('h2');
     titleHeading.dataset.previewTitle = '';
-    titleHeading.textContent = 'Video preview';
+    titleHeading.textContent = 'Media preview';
 
     const metaLine = document.createElement('p');
     metaLine.dataset.previewMeta = '';
@@ -186,7 +244,8 @@
     toolbarActions.className = 'media-preview-toolbar__actions';
 
     const openOriginal = document.createElement('a');
-    openOriginal.className = 'inline-flex items-center gap-2 rounded-md border border-slate-400/40 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-200';
+    openOriginal.className =
+      'inline-flex items-center gap-2 rounded-md border border-slate-400/40 bg-white/10 px-3 py-1.5 text-sm font-medium text-slate-100 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-200';
     openOriginal.target = '_blank';
     openOriginal.rel = 'noopener noreferrer';
     openOriginal.dataset.previewOpen = '';
@@ -196,7 +255,8 @@
     closeButton.type = 'button';
     closeButton.className = 'media-preview-close';
     closeButton.setAttribute('aria-label', 'Close preview');
-    closeButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 0 1 1.06 0L10 8.94l4.72-4.72a.75.75 0 1 1 1.06 1.06L11.06 10l4.72 4.72a.75.75 0 0 1-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 0 1-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 0 1 0-1.06z" clip-rule="evenodd" /></svg>';
+    closeButton.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 0 1 1.06 0L10 8.94l4.72-4.72a.75.75 0 1 1 1.06 1.06L11.06 10l4.72 4.72a.75.75 0 0 1-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 0 1-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 0 1 0-1.06z" clip-rule="evenodd" /></svg>';
 
     toolbarActions.appendChild(openOriginal);
     toolbarActions.appendChild(closeButton);
@@ -233,8 +293,14 @@
     video.setAttribute('preload', 'metadata');
     video.controls = true;
 
+    const documentFrame = document.createElement('iframe');
+    documentFrame.className = 'media-preview-surface__frame hidden';
+    documentFrame.setAttribute('title', 'Document preview');
+    documentFrame.setAttribute('loading', 'lazy');
+
     content.appendChild(status);
     content.appendChild(video);
+    content.appendChild(documentFrame);
     surface.appendChild(content);
     body.appendChild(surface);
 
@@ -245,7 +311,7 @@
 
     backdrop.addEventListener('click', (event) => {
       if (event.target === backdrop) {
-        closeVideoModal();
+        closeMediaModal();
       }
     });
 
@@ -254,7 +320,7 @@
     });
 
     closeButton.addEventListener('click', () => {
-      closeVideoModal();
+      closeMediaModal();
     });
 
     const modal = {
@@ -267,18 +333,43 @@
       statusText,
       titleHeading,
       metaLine,
-      video
+      video,
+      documentFrame,
+      activeContent: null
     };
 
-    state.videoModal = modal;
+    documentFrame.addEventListener('load', () => {
+      if (modal.activeContent === 'document') {
+        applyStatus(modal, '', 'info');
+      }
+    });
+
+    documentFrame.addEventListener('error', () => {
+      if (modal.activeContent === 'document') {
+        applyStatus(modal, 'We could not load this preview. Use the Open original link instead.', 'error');
+      }
+    });
+
+    state.mediaModal = modal;
     return modal;
   }
 
   function openVideoPreview(card) {
-    const modal = ensureVideoModal();
-    const { backdrop, dialog, closeButton, openOriginal, status, statusIcon, statusText, titleHeading, metaLine, video } = modal;
+    const modal = ensureMediaModal();
+    const { backdrop, dialog, closeButton, openOriginal, titleHeading, metaLine, video, documentFrame } = modal;
 
     state.lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modal.activeContent = 'video';
+    dialog.setAttribute('aria-label', 'Video preview');
+
+    if (documentFrame) {
+      documentFrame.classList.add('hidden');
+      try {
+        documentFrame.src = 'about:blank';
+      } catch {
+        // Some browsers may disallow setting src to about:blank on cross-origin frames; ignore errors.
+      }
+    }
 
     const title = (card.getAttribute('data-media-title') ?? '').trim() || 'Video preview';
     titleHeading.textContent = title;
@@ -320,32 +411,7 @@
     }
 
     const updateStatus = (message, variant = 'info') => {
-      if (!message) {
-        status.classList.add('hidden');
-        status.dataset.state = '';
-        statusText.textContent = '';
-        statusIcon.className = 'bi';
-        return;
-      }
-
-      status.classList.remove('hidden');
-      status.dataset.state = variant;
-      statusText.textContent = message;
-
-      status.classList.remove('text-slate-200', 'text-red-200', 'text-emerald-200');
-      let icon = 'bi-hourglass-split';
-
-      if (variant === 'error') {
-        status.classList.add('text-red-200');
-        icon = 'bi-exclamation-octagon';
-      } else if (variant === 'success') {
-        status.classList.add('text-emerald-200');
-        icon = 'bi-check-circle';
-      } else {
-        status.classList.add('text-slate-200');
-      }
-
-      statusIcon.className = `bi ${icon}`;
+      applyStatus(modal, message, variant);
     };
 
     updateStatus('Preparing preview…', 'info');
@@ -453,12 +519,115 @@
     });
   }
 
-  function closeVideoModal() {
-    if (!state.videoModal) {
+  function openDocumentPreview(card) {
+    const modal = ensureMediaModal();
+    const { backdrop, dialog, closeButton, openOriginal, titleHeading, metaLine, video, documentFrame } = modal;
+
+    state.lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    modal.activeContent = 'document';
+    dialog.setAttribute('aria-label', 'Document preview');
+
+    video.pause();
+    video.removeAttribute('src');
+    video.removeAttribute('poster');
+    video.load();
+    video.classList.add('hidden');
+
+    if (state.activeAbortController) {
+      state.activeAbortController.abort();
+      state.activeAbortController = null;
+    }
+
+    if (state.revokeObjectUrl) {
+      state.revokeObjectUrl();
+      state.revokeObjectUrl = null;
+    }
+
+    const title = (card.getAttribute('data-media-title') ?? '').trim() || 'Document preview';
+    titleHeading.textContent = title;
+
+    const type = (card.getAttribute('data-media-type') ?? '').trim();
+    const readableType = type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Document';
+
+    const fileSize = Number.parseInt(card.getAttribute('data-media-size') ?? '', 10);
+
+    const metaItems = [];
+    if (readableType) {
+      metaItems.push(readableType);
+    }
+    const sizeLabel = formatBytes(fileSize);
+    if (sizeLabel) {
+      metaItems.push(sizeLabel);
+    }
+    metaLine.textContent = metaItems.join(' • ');
+
+    const previewUrl = card.getAttribute('data-media-preview-url');
+    const documentSrc = card.getAttribute('data-media-document-src');
+    const documentKind = (card.getAttribute('data-media-document-kind') ?? '').trim().toLowerCase();
+
+    const openHref = documentSrc || previewUrl;
+    if (openHref) {
+      openOriginal.href = openHref;
+      openOriginal.classList.remove('hidden');
+    } else {
+      openOriginal.removeAttribute('href');
+      openOriginal.classList.add('hidden');
+    }
+
+    if (!documentFrame) {
+      if (previewUrl) {
+        window.open(previewUrl, '_blank', 'noopener');
+      } else if (openHref) {
+        window.open(openHref, '_blank', 'noopener');
+      }
       return;
     }
 
-    const { backdrop, video } = state.videoModal;
+    documentFrame.classList.add('hidden');
+    documentFrame.removeAttribute('src');
+
+    if (!documentSrc && !previewUrl) {
+      applyStatus(modal, 'Preview is not available for this document. Use the Open original link instead.', 'error');
+      backdrop.style.display = 'flex';
+      document.body.classList.add('overflow-hidden');
+      document.addEventListener('keydown', handleKeydown);
+      requestAnimationFrame(() => {
+        closeButton.focus();
+      });
+      return;
+    }
+
+    let embedUrl = documentSrc || previewUrl || '';
+    if (documentKind === 'pdf' && embedUrl && !embedUrl.includes('#')) {
+      embedUrl = `${embedUrl}#toolbar=0&navpanes=0`;
+    }
+
+    applyStatus(modal, 'Loading preview…', 'info');
+
+    try {
+      documentFrame.src = embedUrl;
+    } catch (error) {
+      console.error('Failed to load document preview', error);
+      applyStatus(modal, 'We could not load this preview. Use the Open original link instead.', 'error');
+    }
+
+    documentFrame.classList.remove('hidden');
+
+    backdrop.style.display = 'flex';
+    document.body.classList.add('overflow-hidden');
+    document.addEventListener('keydown', handleKeydown);
+
+    requestAnimationFrame(() => {
+      closeButton.focus();
+    });
+  }
+
+  function closeMediaModal() {
+    if (!state.mediaModal) {
+      return;
+    }
+
+    const { backdrop, video, documentFrame } = state.mediaModal;
 
     if (state.activeAbortController) {
       state.activeAbortController.abort();
@@ -474,6 +643,18 @@
     video.removeAttribute('src');
     video.load();
     video.classList.add('hidden');
+
+    if (documentFrame) {
+      documentFrame.classList.add('hidden');
+      try {
+        documentFrame.removeAttribute('src');
+      } catch {
+        // Ignore failures when resetting the iframe source.
+      }
+    }
+
+    applyStatus(state.mediaModal, '', 'info');
+    state.mediaModal.activeContent = null;
 
     document.body.classList.remove('overflow-hidden');
     document.removeEventListener('keydown', handleKeydown);

@@ -43,9 +43,13 @@
     var isDocument = string.Equals(Model.FileType, "Document", System.StringComparison.OrdinalIgnoreCase);
     var normalizedFormat = Model.FileFormat?.Trim().ToLowerInvariant();
     var isPlainTextDocument = isDocument && (normalizedFormat is ".txt" or ".text");
+    var isPdfDocument = isDocument && normalizedFormat == ".pdf";
+    var previewUrl = isDocument
+        ? Url.Action("Preview", "MediaFiles", new { id = Model.FileId })
+        : null;
 }
 
-<div class="flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg"
+<div class="relative flex h-full cursor-pointer flex-col rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70 transition duration-200 ease-out hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
      data-media-card
      data-media-id="@Model.FileId"
      data-media-type="@normalizedType"
@@ -54,7 +58,17 @@
      data-media-content-type="@(isVideo ? videoContentType : null)"
      data-media-duration="@(Model.DurationSeconds?.ToString(CultureInfo.InvariantCulture))"
      data-media-size="@(Model.FileSize > 0 ? Model.FileSize.ToString(CultureInfo.InvariantCulture) : null)"
-     data-media-poster="@(isVideo && !string.IsNullOrWhiteSpace(Model.ThumbnailPath) ? Model.ThumbnailPath : null)">
+     data-media-poster="@(isVideo && !string.IsNullOrWhiteSpace(Model.ThumbnailPath) ? Model.ThumbnailPath : null)"
+     data-media-preview-url="@previewUrl"
+     data-media-document-src="@(isDocument && (isPdfDocument || isPlainTextDocument) ? Model.FilePath : null)"
+     data-media-document-kind="@(isDocument ? (isPdfDocument ? "pdf" : (isPlainTextDocument ? "text" : "document")) : null)"
+     tabindex="0"
+     role="group"
+     aria-selected="false">
+    <div class="pointer-events-none absolute right-4 top-4 z-10 hidden h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-indigo-500 text-white shadow-lg"
+         data-selection-indicator>
+        <i class="bi bi-check-lg text-lg"></i>
+    </div>
     <div class="px-5 pt-5">
         <div class="flex items-start gap-3">
             <div class="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
@@ -112,76 +126,109 @@
 
     <div class="flex items-center justify-between gap-3 px-5 pb-5 pt-4">
         <small class="text-xs text-slate-500">Uploaded @uploadedAt</small>
-        <div class="flex items-center gap-2">
-            @if (isPlainTextDocument)
-            {
-                <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
-                   asp-controller="MediaFiles"
-                   asp-action="EditText"
-                   asp-route-id="@Model.FileId"
-                   target="_blank"
-                   rel="noopener noreferrer">
-                    Edit
-                </a>
-            }
-            @if (isVideo)
-            {
-                <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
-                   asp-controller="MediaFiles"
-                   asp-action="EditVideo"
-                   asp-route-id="@Model.FileId"
-                   target="_blank"
-                   rel="noopener noreferrer">
-                    Edit
-                </a>
-            }
-            @if (isImage)
-            {
-                <form method="post"
-                      asp-controller="MediaFiles"
-                      asp-action="ReplaceImage"
-                      asp-route-id="@Model.FileId"
-                      asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)"
-                      enctype="multipart/form-data"
-                      class="contents"
-                      data-image-replace-form>
-                    @Html.AntiForgeryToken()
-                    <input type="file"
-                           name="replacement"
-                           accept=".jpg,.jpeg,.png,.gif,.bmp,.webp"
-                           class="sr-only"
-                           data-image-replace-input />
-                    <button type="button"
-                            class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
-                            data-image-replace-trigger>
-                        Replace
-                    </button>
-                </form>
-            }
-            @if (isDocument)
-            {
-                <a class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
-                   asp-controller="MediaFiles"
-                   asp-action="Preview"
-                   asp-route-id="@Model.FileId"
-                   target="_blank"
-                   rel="noopener noreferrer">
-                    Preview
-                </a>
-            }
-            <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:text-slate-900"
-               href="@Model.FilePath"
-               target="_blank"
-               rel="noopener noreferrer">
-                Open
-            </a>
+        <div class="relative" data-card-menu>
             <button type="button"
-                    class="inline-flex items-center justify-center rounded-md bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-100"
-                    data-delete-trigger
-                    data-file-id="@Model.FileId"
-                    data-file-title="@Model.Title">
-                Delete
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-transparent bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                    data-card-menu-trigger
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                <span class="sr-only">Open actions menu</span>
+                <i class="bi bi-three-dots-vertical text-lg"></i>
             </button>
+            <div class="absolute right-3 top-3 z-40 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-2xl focus:outline-none hidden"
+                 role="menu"
+                 style="width: max-content;"
+                 data-card-menu-panel
+                 aria-hidden="true">
+                <div class="flex flex-col gap-1.5">
+                    @if (isDocument)
+                    {
+                        <a class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                           role="menuitem"
+                           data-card-menu-close
+                           asp-controller="MediaFiles"
+                           asp-action="Preview"
+                           asp-route-id="@Model.FileId"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <i class="bi bi-eye text-base"></i>
+                            Preview
+                        </a>
+                    }
+                    @if (isPlainTextDocument)
+                    {
+                        <a class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                           role="menuitem"
+                           data-card-menu-close
+                           asp-controller="MediaFiles"
+                           asp-action="EditText"
+                           asp-route-id="@Model.FileId"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <i class="bi bi-pencil-square text-base"></i>
+                            Edit text
+                        </a>
+                    }
+                    @if (isVideo)
+                    {
+                        <a class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                           role="menuitem"
+                           data-card-menu-close
+                           asp-controller="MediaFiles"
+                           asp-action="EditVideo"
+                           asp-route-id="@Model.FileId"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <i class="bi bi-scissors text-base"></i>
+                            Edit video
+                        </a>
+                    }
+                    @if (isImage)
+                    {
+                        <form method="post"
+                              asp-controller="MediaFiles"
+                              asp-action="ReplaceImage"
+                              asp-route-id="@Model.FileId"
+                              asp-route-returnUrl="@(Context.Request.Path + Context.Request.QueryString)"
+                              enctype="multipart/form-data"
+                              data-image-replace-form>
+                            @Html.AntiForgeryToken()
+                            <input type="file"
+                                   name="replacement"
+                                   accept=".jpg,.jpeg,.png,.gif,.bmp,.webp"
+                                   class="sr-only"
+                                   data-image-replace-input />
+                            <button type="button"
+                                    class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                                    role="menuitem"
+                                    data-image-replace-trigger
+                                    data-card-menu-close>
+                                <i class="bi bi-arrow-repeat text-base"></i>
+                                Replace image
+                            </button>
+                        </form>
+                    }
+                    <a class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-indigo-50 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                       role="menuitem"
+                       data-card-menu-close
+                       href="@Model.FilePath"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        <i class="bi bi-box-arrow-up-right text-base"></i>
+                        Open original
+                    </a>
+                    <button type="button"
+                            class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+                            role="menuitem"
+                            data-card-menu-close
+                            data-delete-trigger
+                            data-file-id="@Model.FileId"
+                            data-file-title="@Model.Title">
+                        <i class="bi bi-trash3 text-base"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
