@@ -1,0 +1,143 @@
+@model RoomCast.Models.ViewModels.TextFileEditViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = $"Editing {Model.Title}";
+    ViewData["IsFullWidthLayout"] = true;
+
+    string HumanSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        double size = bytes;
+        string[] suffixes = { "KB", "MB", "GB" };
+        int suffixIndex = 0;
+
+        while (size >= 1024 && suffixIndex < suffixes.Length - 1)
+        {
+            size /= 1024;
+            suffixIndex++;
+        }
+
+        return $"{size:0.##} {suffixes[suffixIndex]}";
+    }
+
+    var sizeLabel = HumanSize(Model.FileSize);
+}
+
+<div class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <header class="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-indigo-500">Text file editor</p>
+            <h1 class="mt-1 text-2xl font-semibold text-slate-900">@Model.Title</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.OriginalFileName))
+            {
+                <p class="text-sm text-slate-500">@Model.OriginalFileName</p>
+            }
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            @if (!string.IsNullOrWhiteSpace(Model.DownloadPath))
+            {
+                <a class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                   href="@Model.DownloadPath"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <i class="bi bi-download text-base"></i>
+                    Download
+                </a>
+            }
+            <a class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+               asp-controller="MediaFiles"
+               asp-action="Preview"
+               asp-route-id="@Model.FileId"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-eye text-base"></i>
+                Preview
+            </a>
+        </div>
+    </header>
+
+    <section class="space-y-4">
+        @if (TempData["Message"] is string message)
+        {
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">
+                @message
+            </div>
+        }
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="ModelOnly" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm" role="alert"></div>
+        }
+
+        <form method="post" asp-action="SaveText" class="space-y-5">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="FileId" />
+            <input type="hidden" asp-for="Title" />
+            <div>
+                <label asp-for="Content" class="mb-2 block text-sm font-semibold text-slate-700"></label>
+                <textarea asp-for="Content"
+                          rows="24"
+                          class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-mono leading-relaxed text-slate-800 shadow-sm transition focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                          spellcheck="false"
+                          data-text-editor></textarea>
+                <span asp-validation-for="Content" class="mt-2 block text-sm text-red-600"></span>
+                <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+                    <span>Content type: @Model.ContentType</span>
+                    <span data-text-editor-count>0 characters</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-end gap-3">
+                <a class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                   asp-controller="MediaFiles"
+                   asp-action="Preview"
+                   asp-route-id="@Model.FileId"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    Cancel
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
+                    <i class="bi bi-save text-base"></i>
+                    Save changes
+                </button>
+            </div>
+        </form>
+    </section>
+
+    <aside class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600 shadow-sm sm:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div class="space-y-1">
+                <p><span class="font-semibold text-slate-800">Size:</span> @sizeLabel</p>
+                <p><span class="font-semibold text-slate-800">Last saved:</span> @Model.LastSavedLabel</p>
+            </div>
+            <div class="text-xs text-slate-500">
+                <p>Changes are written directly to the stored file.</p>
+            </div>
+        </div>
+    </aside>
+</div>
+
+@section Scripts
+{
+    <script>
+        (() => {
+            const editor = document.querySelector('[data-text-editor]');
+            const counter = document.querySelector('[data-text-editor-count]');
+            if (!editor || !counter) {
+                return;
+            }
+
+            const updateCount = () => {
+                const length = editor.value?.length ?? 0;
+                counter.textContent = `${length.toLocaleString()} character${length === 1 ? '' : 's'}`;
+            };
+
+            updateCount();
+            editor.addEventListener('input', updateCount);
+        })();
+    </script>
+}
