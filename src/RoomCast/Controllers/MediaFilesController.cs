@@ -205,6 +205,216 @@ namespace RoomCast.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> EditVideo(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            if (!string.Equals(mediaFile.FileType, "Video", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest();
+            }
+
+            var physicalPath = ResolvePhysicalPath(mediaFile);
+            if (physicalPath == null || !System.IO.File.Exists(physicalPath))
+            {
+                return NotFound();
+            }
+
+            var viewModel = await BuildVideoTrimViewModelAsync(mediaFile, physicalPath);
+
+            ViewData["TrimStart"] = 0d.ToString("0.###", CultureInfo.InvariantCulture);
+            ViewData["TrimEnd"] = viewModel.DurationSeconds > 0
+                ? viewModel.DurationSeconds.ToString("0.###", CultureInfo.InvariantCulture)
+                : 0d.ToString("0.###", CultureInfo.InvariantCulture);
+
+            return View("EditVideo", viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveTrimmedVideo([FromForm] VideoTrimSaveRequest model)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == model.FileId && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            if (!string.Equals(mediaFile.FileType, "Video", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest();
+            }
+
+            var physicalPath = ResolvePhysicalPath(mediaFile);
+            if (physicalPath == null || !System.IO.File.Exists(physicalPath))
+            {
+                return NotFound();
+            }
+
+            var viewModel = await BuildVideoTrimViewModelAsync(mediaFile, physicalPath);
+
+            var sourceDuration = model.SourceDurationSeconds ?? viewModel.DurationSeconds;
+            if (sourceDuration <= 0 && viewModel.DurationSeconds > 0)
+            {
+                sourceDuration = viewModel.DurationSeconds;
+            }
+
+            var startSeconds = Math.Max(model.StartSeconds, 0d);
+            var endSeconds = Math.Max(model.EndSeconds, 0d);
+
+            if (sourceDuration > 0)
+            {
+                if (startSeconds > sourceDuration)
+                {
+                    startSeconds = sourceDuration;
+                }
+
+                if (endSeconds > sourceDuration)
+                {
+                    endSeconds = sourceDuration;
+                }
+            }
+
+            if (endSeconds <= startSeconds)
+            {
+                ModelState.AddModelError(string.Empty, "End time must be greater than the start time.");
+            }
+
+            var clipDuration = endSeconds - startSeconds;
+            if (clipDuration < 0.1)
+            {
+                ModelState.AddModelError(string.Empty, "Please select at least 0.1 seconds to trim.");
+            }
+
+            var videoDirectory = Path.GetDirectoryName(physicalPath);
+            if (string.IsNullOrEmpty(videoDirectory))
+            {
+                ModelState.AddModelError(string.Empty, "Unable to determine where the video is stored on disk.");
+            }
+
+            ViewData["TrimStart"] = startSeconds.ToString("0.###", CultureInfo.InvariantCulture);
+            ViewData["TrimEnd"] = endSeconds.ToString("0.###", CultureInfo.InvariantCulture);
+
+            if (!ModelState.IsValid)
+            {
+                return View("EditVideo", viewModel);
+            }
+
+            var tempFilePath = Path.Combine(
+                videoDirectory!,
+                $"{Path.GetFileNameWithoutExtension(mediaFile.StoredFileName)}-trim-{Guid.NewGuid():N}{mediaFile.FileFormat}");
+
+            try
+            {
+                var clipDurationArgument = clipDuration.ToString("0.###", CultureInfo.InvariantCulture);
+                var startArgument = FormatSecondsForFfmpeg(startSeconds);
+
+                var (copySuccess, copyError) = await RunFfmpegAsync(
+                    "-y",
+                    "-ss",
+                    startArgument,
+                    "-i",
+                    physicalPath,
+                    "-t",
+                    clipDurationArgument,
+                    "-c",
+                    "copy",
+                    tempFilePath);
+
+                if (!copySuccess)
+                {
+                    _logger.LogWarning("Stream copy trim failed for media file {FileId}: {Error}", mediaFile.FileId, copyError);
+
+                    var (encodeSuccess, encodeError) = await RunFfmpegAsync(
+                        "-y",
+                        "-ss",
+                        startArgument,
+                        "-i",
+                        physicalPath,
+                        "-t",
+                        clipDurationArgument,
+                        "-c:v",
+                        "libx264",
+                        "-preset",
+                        "medium",
+                        "-crf",
+                        "22",
+                        "-c:a",
+                        "aac",
+                        "-movflags",
+                        "faststart",
+                        tempFilePath);
+
+                    if (!encodeSuccess)
+                    {
+                        _logger.LogError("Re-encode trim failed for media file {FileId}: {Error}", mediaFile.FileId, encodeError);
+                        ModelState.AddModelError(string.Empty, "We couldn't trim the video. Please try a different range.");
+                        return View("EditVideo", viewModel);
+                    }
+                }
+
+                System.IO.File.Copy(tempFilePath, physicalPath, overwrite: true);
+
+                var fileInfo = new FileInfo(physicalPath);
+                mediaFile.FileSize = fileInfo.Length;
+                mediaFile.DurationSeconds = clipDuration;
+
+                var thumbnail = await TryGenerateVideoThumbnailAsync(physicalPath, mediaFile.StoredFileName);
+                if (!string.IsNullOrWhiteSpace(thumbnail))
+                {
+                    mediaFile.ThumbnailPath = thumbnail;
+                }
+
+                await _context.SaveChangesAsync();
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Failed to save trimmed video for media file {FileId}", mediaFile.FileId);
+                ModelState.AddModelError(string.Empty, "We couldn't save the trimmed video. Please try again.");
+                return View("EditVideo", viewModel);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempFilePath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(tempFilePath);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clean up temp trimmed video for media file {FileId}", mediaFile.FileId);
+                    }
+                }
+            }
+
+            TempData["Message"] = "Trimmed video saved.";
+            return RedirectToAction(nameof(EditVideo), new { id = mediaFile.FileId });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> EditText(int id)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -570,6 +780,92 @@ namespace RoomCast.Controllers
                 FileSize = mediaFile.FileSize,
                 LastSavedLabel = lastWriteUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture),
                 Content = content
+            };
+        }
+
+        private static string FormatSecondsForFfmpeg(double seconds)
+        {
+            if (double.IsNaN(seconds) || double.IsInfinity(seconds) || seconds < 0)
+            {
+                seconds = 0;
+            }
+
+            var timeSpan = TimeSpan.FromSeconds(seconds);
+            return timeSpan.ToString(@"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture);
+        }
+
+        private async Task<(bool Success, string? ErrorOutput)> RunFfmpegAsync(params string[] arguments)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            foreach (var argument in arguments)
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            try
+            {
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    return (false, "Unable to start ffmpeg.");
+                }
+
+                var stdoutTask = process.StandardOutput.ReadToEndAsync();
+                var stderrTask = process.StandardError.ReadToEndAsync();
+
+                await Task.WhenAll(stdoutTask, stderrTask);
+                await process.WaitForExitAsync();
+
+                return (process.ExitCode == 0, stderrTask.Result);
+            }
+            catch (Exception ex) when (ex is Win32Exception || ex is InvalidOperationException)
+            {
+                _logger.LogWarning(ex, "Failed to start ffmpeg process with arguments {Arguments}", string.Join(' ', arguments));
+                return (false, ex.Message);
+            }
+        }
+
+        private async Task<VideoTrimViewModel> BuildVideoTrimViewModelAsync(MediaFile mediaFile, string physicalPath)
+        {
+            double durationSeconds = mediaFile.DurationSeconds ?? 0d;
+            if (durationSeconds <= 0 && System.IO.File.Exists(physicalPath))
+            {
+                var extractedDuration = await TryExtractVideoDurationAsync(physicalPath);
+                if (extractedDuration.HasValue)
+                {
+                    durationSeconds = extractedDuration.Value;
+                    mediaFile.DurationSeconds = durationSeconds;
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to persist extracted duration for media file {FileId}", mediaFile.FileId);
+                    }
+                }
+            }
+
+            return new VideoTrimViewModel
+            {
+                FileId = mediaFile.FileId,
+                Title = mediaFile.Title,
+                OriginalFileName = mediaFile.OriginalFileName,
+                VideoPath = mediaFile.FilePath,
+                ThumbnailPath = mediaFile.ThumbnailPath,
+                StoredFileName = mediaFile.StoredFileName,
+                FileFormat = string.IsNullOrWhiteSpace(mediaFile.FileFormat) ? ".mp4" : mediaFile.FileFormat,
+                ContentType = string.IsNullOrWhiteSpace(mediaFile.ContentType) ? "video/mp4" : mediaFile.ContentType,
+                FileSize = mediaFile.FileSize,
+                DurationSeconds = durationSeconds
             };
         }
 
