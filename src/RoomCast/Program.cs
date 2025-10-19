@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RoomCast.Data;
@@ -48,7 +49,14 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+var staticFileContentTypeProvider = new FileExtensionContentTypeProvider();
+staticFileContentTypeProvider.Mappings[".wasm"] = "application/wasm";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = staticFileContentTypeProvider
+});
 
 app.UseRouting();
 app.UseAuthentication();

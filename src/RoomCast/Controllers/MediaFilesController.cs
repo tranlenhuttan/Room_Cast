@@ -521,6 +521,154 @@ namespace RoomCast.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ReplaceImage(int id, IFormFile? replacement, string? returnUrl)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                TempData["Error"] = "The selected file could not be found.";
+                if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (!string.Equals(mediaFile.FileType, "Picture", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(mediaFile.FileType, "Image", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["Error"] = "Only image files can be replaced.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            if (replacement == null || replacement.Length == 0)
+            {
+                TempData["Error"] = "Please choose an image file to upload.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            if (replacement.Length > MaxFileSizeBytes)
+            {
+                TempData["Error"] = $"File exceeds the {MaxFileSizeBytes / (1024 * 1024)}MB limit.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            var extension = Path.GetExtension(replacement.FileName);
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                TempData["Error"] = "We couldn't determine the file type of the uploaded image.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            extension = extension.ToLowerInvariant();
+
+            if (!AllowedExtensions.TryGetValue("Picture", out var pictureExtensions) || !pictureExtensions.Contains(extension))
+            {
+                var allowedList = AllowedExtensions.TryGetValue("Picture", out var allowedExt)
+                    ? string.Join(", ", allowedExt.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                    : ".bmp, .gif, .jpg, .jpeg, .png, .webp";
+                TempData["Error"] = $"Unsupported file format. Allowed formats: {allowedList}";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            var uploadSubFolder = GetUploadFolder("Picture");
+            var uploadsRoot = Path.Combine(_environment.WebRootPath, "uploads", uploadSubFolder);
+            Directory.CreateDirectory(uploadsRoot);
+
+            var oldPhysicalPath = ResolvePhysicalPath(mediaFile);
+            var storedFileName = GenerateSafeFileName(mediaFile.Title, extension);
+
+            var relativePath = $"/uploads/{uploadSubFolder}/{storedFileName}";
+
+            var physicalPath = Path.Combine(uploadsRoot, storedFileName);
+            var writingToExistingPath = oldPhysicalPath != null &&
+                string.Equals(Path.GetFullPath(oldPhysicalPath), Path.GetFullPath(physicalPath), StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                await using var stream = System.IO.File.Create(physicalPath);
+                await replacement.CopyToAsync(stream);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Failed to write replacement image to {Path} for media file {FileId}", physicalPath, mediaFile.FileId);
+                TempData["Error"] = "We couldn't save the new image. Please try again.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            var previousOriginalFileName = mediaFile.OriginalFileName;
+            var previousStoredFileName = mediaFile.StoredFileName;
+            var previousFileFormat = mediaFile.FileFormat;
+            var previousFilePath = mediaFile.FilePath;
+            var previousFileSize = mediaFile.FileSize;
+            var previousContentType = mediaFile.ContentType;
+            var previousFileType = mediaFile.FileType;
+
+            mediaFile.OriginalFileName = replacement.FileName;
+            mediaFile.StoredFileName = storedFileName;
+            mediaFile.FileFormat = extension;
+            mediaFile.FilePath = relativePath;
+            mediaFile.FileSize = replacement.Length;
+            mediaFile.ContentType = ResolveImageContentType(replacement, extension);
+            mediaFile.FileType = GetFileTypeForExtension(extension) ?? "Picture";
+            mediaFile.DurationSeconds = null;
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "Failed to persist replacement image metadata for media file {FileId}", mediaFile.FileId);
+
+                mediaFile.OriginalFileName = previousOriginalFileName;
+                mediaFile.StoredFileName = previousStoredFileName;
+                mediaFile.FileFormat = previousFileFormat;
+                mediaFile.FilePath = previousFilePath;
+                mediaFile.FileSize = previousFileSize;
+                mediaFile.ContentType = previousContentType;
+                mediaFile.FileType = previousFileType;
+
+                if (!writingToExistingPath)
+                {
+                    try
+                    {
+                        if (System.IO.File.Exists(physicalPath))
+                        {
+                            System.IO.File.Delete(physicalPath);
+                        }
+                    }
+                    catch (IOException cleanupEx)
+                    {
+                        _logger.LogWarning(cleanupEx, "Failed to clean up replacement image at {Path} after database error for media file {FileId}", physicalPath, mediaFile.FileId);
+                    }
+                }
+
+                TempData["Error"] = "We couldn't update the file right now. Please try again.";
+                return RedirectAfterImageReplace(mediaFile, returnUrl);
+            }
+
+            if (!writingToExistingPath && !string.IsNullOrWhiteSpace(previousFilePath))
+            {
+                TryDeletePhysicalFile(previousFilePath);
+            }
+
+            TempData["Message"] = $"Replaced '{mediaFile.Title}' successfully.";
+            return RedirectAfterImageReplace(mediaFile, returnUrl);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Rename(int id, [FromForm] string title)
         {
             var user = await _userManager.GetUserAsync(User);
@@ -654,6 +802,34 @@ namespace RoomCast.Controllers
 
         private static string FormatAllowedExtensionsList() =>
             string.Join(", ", AllowedExtensions.Select(kvp => $"{kvp.Key}: {string.Join(", ", kvp.Value.OrderBy(x => x))}"));
+
+        private IActionResult RedirectAfterImageReplace(MediaFile mediaFile, string? returnUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction(nameof(Details), new { id = mediaFile.FileId });
+        }
+
+        private static string ResolveImageContentType(IFormFile file, string extension)
+        {
+            if (!string.IsNullOrWhiteSpace(file.ContentType))
+            {
+                return file.ContentType;
+            }
+
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                _ => "application/octet-stream"
+            };
+        }
 
         private static string GenerateSafeFileName(string title, string extension)
         {

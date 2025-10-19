@@ -564,7 +564,7 @@
         const { createFFmpeg } = globalThis.FFmpeg;
         const ffmpeg = createFFmpeg({
           log: false,
-          corePath: 'https://cdn.jsdelivr.net/npm/%40ffmpeg/core@0.12.6/dist/ffmpeg-core.js'
+          corePath: '/lib/ffmpeg/ffmpeg-core.js'
         });
 
         instancePromise = ffmpeg.load().then(() => ({ ffmpeg }));

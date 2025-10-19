@@ -43,13 +43,15 @@
 
 @section Scripts
 {
-    <script src="https://cdn.jsdelivr.net/npm/%40ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js" crossorigin="anonymous"></script>
+    <script src="~/lib/ffmpeg/ffmpeg.js" asp-append-version="true"></script>
     <script src="~/js/media-preview.js" asp-append-version="true"></script>
     <script>
         (() => {
             const modal = document.getElementById('deleteFileModal');
             const triggers = document.querySelectorAll('[data-delete-trigger]');
+            const imageReplaceForms = document.querySelectorAll('[data-image-replace-form]');
             if (!modal || triggers.length === 0) {
+                setupImageReplace(imageReplaceForms);
                 return;
             }
 
@@ -97,6 +99,41 @@
                     toggleModal(false);
                 }
             });
+
+            setupImageReplace(imageReplaceForms);
+
+            function setupImageReplace(forms) {
+                if (!forms || forms.length === 0) {
+                    return;
+                }
+
+                forms.forEach((form) => {
+                    const trigger = form.querySelector('[data-image-replace-trigger]');
+                    const input = form.querySelector('[data-image-replace-input]');
+
+                    if (!trigger || !input) {
+                        return;
+                    }
+
+                    trigger.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        if (trigger.disabled) {
+                            return;
+                        }
+                        input.click();
+                    });
+
+                    input.addEventListener('change', () => {
+                        if (!input.files || input.files.length === 0) {
+                            return;
+                        }
+
+                        trigger.disabled = true;
+                        trigger.textContent = 'Uploading…';
+                        form.submit();
+                    });
+                });
+            }
         })();
     </script>
 }
