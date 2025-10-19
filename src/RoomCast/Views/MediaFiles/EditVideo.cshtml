@@ -1,0 +1,310 @@
+@using System.Globalization
+@model RoomCast.Models.ViewModels.VideoTrimViewModel
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = $"Trim {Model.Title}";
+    ViewData["IsFullWidthLayout"] = true;
+
+    static double ParseViewDataDouble(Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary viewData, string key, double fallback)
+    {
+        if (viewData[key] is string stringValue &&
+            double.TryParse(stringValue, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
+
+    static string FormatTimeLabel(double seconds)
+    {
+        var normalized = Math.Max(0d, seconds);
+        var span = TimeSpan.FromSeconds(normalized);
+        return span.TotalHours >= 1
+            ? span.ToString(@"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture)
+            : span.ToString(@"mm\:ss\.fff", CultureInfo.InvariantCulture);
+    }
+
+    static string FormatHumanSize(long bytes)
+    {
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        double size = bytes;
+        string[] suffixes = { "KB", "MB", "GB" };
+        int suffixIndex = 0;
+
+        while (size >= 1024 && suffixIndex < suffixes.Length - 1)
+        {
+            size /= 1024;
+            suffixIndex++;
+        }
+
+        return $"{size:0.##} {suffixes[suffixIndex]}";
+    }
+
+    var trimStart = ParseViewDataDouble(ViewData, "TrimStart", 0d);
+    var defaultEnd = Model.DurationSeconds > 0 ? Model.DurationSeconds : trimStart;
+    var trimEnd = ParseViewDataDouble(ViewData, "TrimEnd", defaultEnd);
+    if (trimEnd <= trimStart && defaultEnd > trimStart)
+    {
+        trimEnd = defaultEnd;
+    }
+
+    var effectiveDuration = Model.DurationSeconds > 0
+        ? Model.DurationSeconds
+        : Math.Max(trimEnd, trimStart);
+
+    var humanSize = FormatHumanSize(Model.FileSize);
+}
+
+<div class="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+    <header class="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-indigo-500">Video trim editor</p>
+            <h1 class="mt-1 text-2xl font-semibold text-slate-900">@Model.Title</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.OriginalFileName))
+            {
+                <p class="text-sm text-slate-500">@Model.OriginalFileName</p>
+            }
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+               asp-controller="MediaFiles"
+               asp-action="Preview"
+               asp-route-id="@Model.FileId"
+               target="_blank"
+               rel="noopener noreferrer">
+                <i class="bi bi-eye text-base"></i>
+                Preview
+            </a>
+        </div>
+    </header>
+
+    <section class="space-y-5">
+        @if (TempData["Message"] is string successMessage)
+        {
+            <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 shadow-sm">
+                @successMessage
+            </div>
+        }
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="ModelOnly" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm" role="alert"></div>
+        }
+
+        <form method="post"
+              asp-action="SaveTrimmedVideo"
+              class="space-y-6"
+              data-trim-form>
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="FileId" value="@Model.FileId" />
+            <input type="hidden"
+                   name="StartSeconds"
+                   value="@trimStart.ToString("0.###", CultureInfo.InvariantCulture)"
+                   data-trim-start-hidden />
+            <input type="hidden"
+                   name="EndSeconds"
+                   value="@trimEnd.ToString("0.###", CultureInfo.InvariantCulture)"
+                   data-trim-end-hidden />
+            <input type="hidden"
+                   name="SourceDurationSeconds"
+                   value="@effectiveDuration.ToString("0.###", CultureInfo.InvariantCulture)"
+                   data-trim-duration-hidden />
+
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-black/95 shadow-sm">
+                <video class="block aspect-video w-full bg-black"
+                       preload="metadata"
+                       controls
+                       data-trim-video
+                       poster="@Model.ThumbnailPath">
+                    <source src="@Model.VideoPath" type="@Model.ContentType" />
+                    <track kind="captions" />
+                    Your browser does not support the video element.
+                </video>
+            </div>
+
+            <div class="grid gap-6 lg:grid-cols-2">
+                <div class="space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold text-slate-700">
+                            <span>Timeline</span>
+                            <div class="flex items-center gap-4 text-xs font-mono text-slate-500">
+                                <span class="flex items-center gap-1">
+                                    <span class="uppercase tracking-wide text-slate-400">Start</span>
+                                    <span data-trim-start-label>@FormatTimeLabel(trimStart)</span>
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <span class="uppercase tracking-wide text-slate-400">End</span>
+                                    <span data-trim-end-label>@FormatTimeLabel(trimEnd)</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="trim-timeline">
+                            <div class="trim-timeline__track" data-trim-track>
+                                <div class="trim-timeline__selection" data-trim-selection></div>
+                                <button type="button"
+                                        class="trim-timeline__pin trim-timeline__pin--start"
+                                        data-trim-pin-start
+                                        role="slider"
+                                        aria-label="Adjust start time"
+                                        aria-orientation="horizontal"
+                                        aria-valuemin="0"
+                                        aria-valuenow="@trimStart.ToString("0.###", CultureInfo.InvariantCulture)"
+                                        aria-valuemax="@trimEnd.ToString("0.###", CultureInfo.InvariantCulture)"
+                                        aria-valuetext="@FormatTimeLabel(trimStart)"></button>
+                                <button type="button"
+                                        class="trim-timeline__pin trim-timeline__pin--end"
+                                        data-trim-pin-end
+                                        role="slider"
+                                        aria-label="Adjust end time"
+                                        aria-orientation="horizontal"
+                                        aria-valuemin="@trimStart.ToString("0.###", CultureInfo.InvariantCulture)"
+                                        aria-valuenow="@trimEnd.ToString("0.###", CultureInfo.InvariantCulture)"
+                                        aria-valuemax="@effectiveDuration.ToString("0.###", CultureInfo.InvariantCulture)"
+                                        aria-valuetext="@FormatTimeLabel(trimEnd)"></button>
+                            </div>
+                        </div>
+                        <input type="range"
+                               min="0"
+                               max="@effectiveDuration.ToString("0.###", CultureInfo.InvariantCulture)"
+                               step="0.01"
+                               value="@trimStart.ToString("0.###", CultureInfo.InvariantCulture)"
+                               class="hidden"
+                               tabindex="-1"
+                               aria-hidden="true"
+                               data-trim-slider-start />
+                        <input type="range"
+                               min="0"
+                               max="@effectiveDuration.ToString("0.###", CultureInfo.InvariantCulture)"
+                               step="0.01"
+                               value="@trimEnd.ToString("0.###", CultureInfo.InvariantCulture)"
+                               class="hidden"
+                               tabindex="-1"
+                               aria-hidden="true"
+                               data-trim-slider-end />
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">Start marker</div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-slate-400" for="trim-start-input">Seconds</label>
+                            <input id="trim-start-input"
+                                   type="number"
+                                   min="0"
+                                   step="0.01"
+                                   class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                   value="@trimStart.ToString("0.###", CultureInfo.InvariantCulture)"
+                                   data-trim-start-input />
+                            <button type="button"
+                                    class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
+                                    data-trim-mark-start>
+                                <i class="bi bi-flag"></i>
+                                Use current frame
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">End marker</div>
+                        <div class="flex items-center gap-3">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-slate-400" for="trim-end-input">Seconds</label>
+                            <input id="trim-end-input"
+                                   type="number"
+                                   min="0"
+                                   step="0.01"
+                                   class="w-32 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                                   value="@trimEnd.ToString("0.###", CultureInfo.InvariantCulture)"
+                                   data-trim-end-input />
+                            <button type="button"
+                                    class="inline-flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
+                                    data-trim-mark-end>
+                                <i class="bi bi-flag-fill"></i>
+                                Mark current frame
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        <p class="flex items-center justify-between">
+                            <span class="font-semibold text-slate-700">Selection length</span>
+                            <span class="font-mono text-xs text-slate-500" data-trim-length-label>@FormatTimeLabel(trimEnd - trimStart)</span>
+                        </p>
+                        <p class="mt-2 text-xs text-slate-500">Video outside the selected range will be removed when you save.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div>
+                        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400">Playback tools</h2>
+                        <p class="mt-1 text-sm text-slate-600">Use these controls to preview your trimmed clip before saving.</p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+                                data-trim-preview>
+                            <i class="bi bi-play-circle"></i>
+                            Preview selection
+                        </button>
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600"
+                                data-trim-reset>
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            Reset selection
+                        </button>
+                    </div>
+                    <div class="mt-auto space-y-2 rounded-xl bg-slate-50 px-4 py-4 text-xs text-slate-500">
+                        <p>Saving the trim will overwrite the existing file. This action cannot be undone.</p>
+                        <p>We keep a frame-accurate copy where possible, falling back to re-encoding if required.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="text-xs text-slate-500">
+                    <p>Selected range: <span class="font-semibold text-slate-700" data-trim-summary>@FormatTimeLabel(trimStart)</span> → <span class="font-semibold text-slate-700">@FormatTimeLabel(trimEnd)</span></p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a class="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                       asp-controller="MediaFiles"
+                       asp-action="Preview"
+                       asp-route-id="@Model.FileId"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            data-trim-submit>
+                        <i class="bi bi-scissors text-base"></i>
+                        Save trimmed video
+                    </button>
+                </div>
+            </div>
+        </form>
+    </section>
+
+    <aside class="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-600 shadow-sm sm:grid-cols-2">
+        <div class="space-y-1">
+            <p><span class="font-semibold text-slate-800">Format:</span> @Model.FileFormat</p>
+            <p><span class="font-semibold text-slate-800">Content type:</span> @Model.ContentType</p>
+            <p><span class="font-semibold text-slate-800">Size:</span> @humanSize</p>
+        </div>
+        <div class="space-y-1">
+            <p><span class="font-semibold text-slate-800">Total duration:</span> @FormatTimeLabel(effectiveDuration)</p>
+            <p><span class="font-semibold text-slate-800">Stored file name:</span> @Model.StoredFileName</p>
+            @if (!string.IsNullOrWhiteSpace(Model.VideoPath))
+            {
+                <p><span class="font-semibold text-slate-800">Path:</span> <a class="text-indigo-600 hover:text-indigo-500" href="@Model.VideoPath" target="_blank" rel="noopener">@Model.VideoPath</a></p>
+            }
+        </div>
+    </aside>
+</div>
+
+@section Scripts
+{
+    <script src="~/js/video-trim.js" asp-append-version="true"></script>
+}

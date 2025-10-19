@@ -124,6 +124,17 @@
                     Edit
                 </a>
             }
+            @if (isVideo)
+            {
+                <a class="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-300 hover:text-indigo-600"
+                   asp-controller="MediaFiles"
+                   asp-action="EditVideo"
+                   asp-route-id="@Model.FileId"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    Edit
+                </a>
+            }
             @if (isDocument)
             {
                 <a class="inline-flex items-center justify-center rounded-md bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
