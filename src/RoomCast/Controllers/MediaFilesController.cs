@@ -11,6 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace RoomCast.Controllers
 {
@@ -196,11 +197,116 @@ namespace RoomCast.Controllers
             if (mediaFile == null)
             {
                 return NotFound();
-            }
+        }
 
             var viewModel = _previewBuilder.Build(mediaFile);
 
             return View("Preview", viewModel);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditText(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == id && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            if (!IsPlainTextDocument(mediaFile))
+            {
+                return BadRequest();
+            }
+
+            var physicalPath = ResolvePhysicalPath(mediaFile);
+            if (physicalPath == null || !System.IO.File.Exists(physicalPath))
+            {
+                return NotFound();
+            }
+
+            TextFileEditViewModel viewModel;
+            try
+            {
+                viewModel = await BuildTextFileEditViewModelAsync(mediaFile, physicalPath);
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Failed to load text editor for media file {FileId} belonging to user {UserId}", id, user.Id);
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return View("EditText", viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveText(TextFileEditViewModel model)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Challenge();
+            }
+
+            var mediaFile = await _context.MediaFiles
+                .Where(m => m.FileId == model.FileId && m.UserId == user.Id)
+                .FirstOrDefaultAsync();
+
+            if (mediaFile == null)
+            {
+                return NotFound();
+            }
+
+            if (!IsPlainTextDocument(mediaFile))
+            {
+                return BadRequest();
+            }
+
+            var physicalPath = ResolvePhysicalPath(mediaFile);
+            if (physicalPath == null || !System.IO.File.Exists(physicalPath))
+            {
+                ModelState.AddModelError(string.Empty, "We could not find the stored file on disk to update it.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var fallbackContent = model.Content ?? string.Empty;
+                var fallbackViewModel = await BuildTextFileEditViewModelAsync(mediaFile, physicalPath, fallbackContent);
+                return View("EditText", fallbackViewModel);
+            }
+
+            var contentToWrite = model.Content ?? string.Empty;
+            var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+            try
+            {
+                await System.IO.File.WriteAllTextAsync(physicalPath!, contentToWrite, encoding);
+                mediaFile.FileSize = encoding.GetByteCount(contentToWrite);
+                if (string.IsNullOrWhiteSpace(mediaFile.ContentType))
+                {
+                    mediaFile.ContentType = "text/plain";
+                }
+                await _context.SaveChangesAsync();
+            }
+            catch (IOException ex)
+            {
+                _logger.LogError(ex, "Failed to save text content for media file {FileId} belonging to user {UserId}", mediaFile.FileId, user.Id);
+                ModelState.AddModelError(string.Empty, "We couldn't save your changes right now. Please try again.");
+                var errorViewModel = await BuildTextFileEditViewModelAsync(mediaFile, physicalPath, contentToWrite);
+                return View("EditText", errorViewModel);
+            }
+
+            TempData["Message"] = "Saved changes.";
+            return RedirectToAction(nameof(EditText), new { id = mediaFile.FileId });
         }
 
         [HttpPost]
@@ -398,6 +504,73 @@ namespace RoomCast.Controllers
             }
 
             return null;
+        }
+
+        private static bool IsPlainTextDocument(MediaFile mediaFile)
+        {
+            if (!string.Equals(mediaFile.FileType, "Document", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var extension = mediaFile.FileFormat?.Trim().ToLowerInvariant();
+            return extension is ".txt" or ".text";
+        }
+
+        private string? ResolvePhysicalPath(MediaFile mediaFile)
+        {
+            if (string.IsNullOrWhiteSpace(mediaFile.FilePath))
+            {
+                return null;
+            }
+
+            var relativePath = mediaFile.FilePath.TrimStart('/', '\\');
+            var combinedPath = Path.Combine(_environment.WebRootPath, relativePath);
+            var fullPath = Path.GetFullPath(combinedPath);
+
+            var webRootFullPath = Path.GetFullPath(_environment.WebRootPath);
+            if (!fullPath.StartsWith(webRootFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return fullPath;
+        }
+
+        private async Task<TextFileEditViewModel> BuildTextFileEditViewModelAsync(
+            MediaFile mediaFile,
+            string? physicalPath,
+            string? overrideContent = null)
+        {
+            string content;
+            if (overrideContent is not null)
+            {
+                content = overrideContent;
+            }
+            else if (!string.IsNullOrEmpty(physicalPath) && System.IO.File.Exists(physicalPath))
+            {
+                content = await System.IO.File.ReadAllTextAsync(physicalPath);
+            }
+            else
+            {
+                content = string.Empty;
+            }
+
+            var lastWriteUtc = (!string.IsNullOrEmpty(physicalPath) && System.IO.File.Exists(physicalPath))
+                ? System.IO.File.GetLastWriteTimeUtc(physicalPath)
+                : mediaFile.CreatedAt;
+
+            return new TextFileEditViewModel
+            {
+                FileId = mediaFile.FileId,
+                Title = mediaFile.Title,
+                OriginalFileName = mediaFile.OriginalFileName,
+                DownloadPath = mediaFile.FilePath,
+                ContentType = string.IsNullOrWhiteSpace(mediaFile.ContentType) ? "text/plain" : mediaFile.ContentType,
+                FileSize = mediaFile.FileSize,
+                LastSavedLabel = lastWriteUtc.ToLocalTime().ToString("f", CultureInfo.CurrentCulture),
+                Content = content
+            };
         }
 
         private async Task<string?> TryGenerateVideoThumbnailAsync(string videoPhysicalPath, string storedFileName)
