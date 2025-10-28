@@ -39,6 +39,10 @@
                                     <a class="transition hover:text-indigo-500" asp-action="Details" asp-route-id="@album.AlbumId">View</a>
                                     <span class="text-slate-300">|</span>
                                     <a class="transition hover:text-indigo-500" asp-action="AddFile" asp-route-id="@album.AlbumId">Add File</a>
+                                    <span class="text-slate-300">|</span>
+                                    <a class="transition hover:text-indigo-500" asp-action="Edit" asp-route-id="@album.AlbumId">Edit</a>
+                                    <span class="text-slate-300">|</span>
+                                    <a class="text-red-600 transition hover:text-red-500" asp-action="Delete" asp-route-id="@album.AlbumId">Delete</a>
                                 </div>
                             </td>
                         </tr>

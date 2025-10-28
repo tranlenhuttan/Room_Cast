@@ -106,5 +106,93 @@ namespace RoomCast.Controllers
 
             return View(album);
         }
+
+        // GET: Edit Album
+        public async Task<IActionResult> Edit(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var album = await _context.Albums.FindAsync(id);
+            if (album == null) return NotFound();
+
+            // Ensure user owns this album
+            if (album.UserId != user.Id) return Forbid();
+
+            return View(album);
+        }
+
+        // POST: Edit Album
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Album album)
+        {
+            if (id != album.AlbumId) return NotFound();
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var existingAlbum = await _context.Albums.FindAsync(id);
+            if (existingAlbum == null) return NotFound();
+
+            // Ensure user owns this album
+            if (existingAlbum.UserId != user.Id) return Forbid();
+
+            if (ModelState.IsValid)
+            {
+                existingAlbum.AlbumName = album.AlbumName;
+                await _context.SaveChangesAsync();
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(album);
+        }
+
+        // GET: Delete Album (Confirmation)
+        public async Task<IActionResult> Delete(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var album = await _context.Albums
+                .Include(a => a.AlbumFiles)
+                .ThenInclude(af => af.MediaFile)
+                .FirstOrDefaultAsync(a => a.AlbumId == id);
+
+            if (album == null) return NotFound();
+
+            // Ensure user owns this album
+            if (album.UserId != user.Id) return Forbid();
+
+            return View(album);
+        }
+
+        // POST: Delete Album
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Challenge();
+
+            var album = await _context.Albums
+                .Include(a => a.AlbumFiles)
+                .FirstOrDefaultAsync(a => a.AlbumId == id);
+
+            if (album == null) return NotFound();
+
+            // Ensure user owns this album
+            if (album.UserId != user.Id) return Forbid();
+
+            // Remove all album files associations
+            _context.AlbumFiles.RemoveRange(album.AlbumFiles);
+            
+            // Remove the album itself
+            _context.Albums.Remove(album);
+            
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Index));
+        }
     }
 }
