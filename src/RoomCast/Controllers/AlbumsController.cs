@@ -184,13 +184,24 @@ namespace RoomCast.Controllers
             // Ensure user owns this album
             if (album.UserId != user.Id) return Forbid();
 
-            // Remove all album files associations
-            _context.AlbumFiles.RemoveRange(album.AlbumFiles);
-            
-            // Remove the album itself
-            _context.Albums.Remove(album);
-            
-            await _context.SaveChangesAsync();
+            // Use a transaction to ensure data consistency
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // Remove all album files associations
+                _context.AlbumFiles.RemoveRange(album.AlbumFiles);
+                
+                // Remove the album itself
+                _context.Albums.Remove(album);
+                
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             return RedirectToAction(nameof(Index));
         }

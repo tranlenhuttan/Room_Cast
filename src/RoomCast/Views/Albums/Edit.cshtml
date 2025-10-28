@@ -10,6 +10,7 @@
     </div>
 
     <form asp-action="Edit" method="post" class="space-y-5">
+        @Html.AntiForgeryToken()
         <input type="hidden" asp-for="AlbumId" />
         
         <div class="space-y-2">

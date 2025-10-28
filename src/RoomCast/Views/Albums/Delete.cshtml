@@ -42,6 +42,7 @@
     }
 
     <form asp-action="Delete" method="post" class="flex gap-3">
+        @Html.AntiForgeryToken()
         <input type="hidden" asp-for="AlbumId" />
         <button type="submit"
                 class="inline-flex items-center justify-center rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600">
